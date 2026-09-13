@@ -844,8 +844,8 @@ function SubjectDetail() {
                   ) : (
                     <Link
                       className="outline-btn"
-                      to={`/practice/${subject.slug}?topic=${encodeURIComponent(
-                        topic.slug
+                      to={`/practice/${subject.slug}?topicId=${encodeURIComponent(
+                        topic.id
                       )}`}
                     >
                       Question Bank
@@ -915,9 +915,7 @@ function TopicDetail() {
     return (
       <section className="section page">
         <div className="container">
-          <div className="demo-note">
-            Subject not found.
-          </div>
+          <div className="demo-note">Subject not found.</div>
         </div>
       </section>
     )
@@ -931,9 +929,7 @@ function TopicDetail() {
     return (
       <section className="section page">
         <div className="container">
-          <div className="demo-note">
-            Topic not found.
-          </div>
+          <div className="demo-note">Topic not found.</div>
         </div>
       </section>
     )
@@ -950,10 +946,11 @@ function TopicDetail() {
         (b.display_order || 0)
     )
 
+  const hasChildren = children.length > 0
+
   return (
     <section className="section page">
       <div className="container">
-
         <button
           className="back-link"
           onClick={() => window.history.back()}
@@ -965,42 +962,37 @@ function TopicDetail() {
           eyebrow="TOPIC"
           title={currentTopic.name}
           copy={
-            children.length > 0
-              ? 'Choose a subtopic to continue.'
+            hasChildren
+              ? 'Choose a subtopic to continue, or practice all questions within this section.'
               : 'This is the final topic level. Open the question bank to practice.'
           }
         />
 
-        {children.length > 0 ? (
+        {hasChildren ? (
           <div className="topic-layout">
-
             <div className="topic-list">
-
               {children.map((child) => {
-
-                const childCount = topics.filter(
+                const childHasChildren = topics.some(
                   (item) =>
-                    String(item.parent_id) ===
-                    String(child.id)
-                ).length
+                    String(item.parent_id) === String(child.id)
+                )
 
                 return (
-                  <div
-                    className="topic-row"
-                    key={child.id}
-                  >
-
+                  <div className="topic-row" key={child.id}>
                     <div>
                       <h3>{child.name}</h3>
-
                       <p>
-                        {childCount > 0
-                          ? `${childCount} subtopics`
+                        {childHasChildren
+                          ? `${topics.filter(
+                              (item) =>
+                                String(item.parent_id) ===
+                                String(child.id)
+                            ).length} subtopics`
                           : 'Question Bank'}
                       </p>
                     </div>
 
-                    {childCount > 0 ? (
+                    {childHasChildren ? (
                       <Link
                         className="outline-btn"
                         to={`/subjects/${subject.slug}/topic/${child.id}`}
@@ -1011,89 +1003,63 @@ function TopicDetail() {
                     ) : (
                       <Link
                         className="outline-btn"
-                        to={`/practice/${subject.slug}?topic=${encodeURIComponent(
-                          child.slug
+                        to={`/practice/${subject.slug}?topicId=${encodeURIComponent(
+                          child.id
                         )}`}
                       >
                         Question Bank
                         <ArrowRight size={16} />
                       </Link>
                     )}
-
                   </div>
                 )
               })}
-
             </div>
 
             <div className="sidebar-card">
-
-              <div className="eyebrow">
-                TOPIC
-              </div>
-
-              <h3>
-                {currentTopic.name}
-              </h3>
-
+              <div className="eyebrow">TOPIC PRACTICE</div>
+              <h3>{currentTopic.name}</h3>
               <p>
-                {children.length > 0
-                  ? 'Explore the subtopics below.'
-                  : 'Open the question bank for this topic.'}
+                Practice questions from this topic and every subtopic below it.
               </p>
-
-              {children.length === 0 && (
-                <Link
-                  className="primary-btn full"
-                  to={`/practice/${subject.slug}?topic=${encodeURIComponent(
-                    currentTopic.slug
-                  )}`}
-                >
-                  Open Question Bank
-                </Link>
-              )}
-
+              <Link
+                className="primary-btn full"
+                to={`/practice/${subject.slug}?topicId=${encodeURIComponent(
+                  currentTopic.id
+                )}`}
+              >
+                Practice This Section
+                <ArrowRight size={18} />
+              </Link>
             </div>
-
           </div>
         ) : (
-
           <div className="callout">
-
             <div>
-              <div className="eyebrow">
-                QUESTION BANK
-              </div>
-
-              <h2>
-                {currentTopic.name}
-              </h2>
-
+              <div className="eyebrow">QUESTION BANK</div>
+              <h2>{currentTopic.name}</h2>
               <p>
-                No subtopics are below this level.
-                Questions for this topic will appear here
-                once they are added and published.
+                This topic has no further subtopics. Its questions will appear
+                in the question bank once they are added and published.
               </p>
             </div>
 
             <Link
               className="primary-btn"
-              to={`/practice/${subject.slug}?topic=${encodeURIComponent(
-                currentTopic.slug
+              to={`/practice/${subject.slug}?topicId=${encodeURIComponent(
+                currentTopic.id
               )}`}
             >
               Open Question Bank
               <ArrowRight size={18} />
             </Link>
-
           </div>
-
         )}
-
       </div>
     </section>
   )
 }
+
 
 /* =========================================================
    LOAD SUBJECT
@@ -1240,8 +1206,8 @@ function Practice() {
   const { slug } = useParams()
   const [searchParams] = useSearchParams()
 
-  const topicSlug =
-    searchParams.get('topic')
+  const topicId = searchParams.get('topicId')
+  const topicSlug = searchParams.get('topic')
 
 
   const [questions, setQuestions] =
@@ -1267,6 +1233,7 @@ function Practice() {
 
     loadQuestions(
       slug,
+      topicId,
       topicSlug
     )
       .then(setQuestions)
@@ -1274,7 +1241,7 @@ function Practice() {
         setLoading(false)
       )
 
-  }, [slug, topicSlug])
+  }, [slug, topicId, topicSlug])
 
 
   if (loading) {
@@ -1298,9 +1265,7 @@ function Practice() {
           </h1>
 
           <p>
-            This topic is ready for questions.
-            Once published questions are added
-            to Supabase, they will appear here.
+            Published questions for this topic or its subtopics have not been added yet.
           </p>
 
           <Link
@@ -1578,49 +1543,58 @@ function Practice() {
    LOAD QUESTIONS
    ========================================================= */
 
-async function loadQuestions(
-  slug,
-  topicSlug = null
-) {
+function getTopicIdsForPractice(topics, rootTopicId) {
+  const wanted = new Set([String(rootTopicId)])
+  let changed = true
 
-  if (
-    !supabaseConfigured ||
-    !supabase
-  ) {
-    return demoQuestions
+  while (changed) {
+    changed = false
+
+    for (const topic of topics) {
+      const parentId = topic.parent_id == null
+        ? null
+        : String(topic.parent_id)
+
+      if (parentId && wanted.has(parentId)) {
+        const id = String(topic.id)
+        if (!wanted.has(id)) {
+          wanted.add(id)
+          changed = true
+        }
+      }
+    }
   }
 
+  return Array.from(wanted)
+}
+
+async function loadQuestions(slug, topicId = null, topicSlug = null) {
+  if (!supabaseConfigured || !supabase) {
+    return demoQuestions
+  }
 
   const {
     data: subject,
     error: subjectError
   } = await supabase
     .from('subjects')
-    .select(
-      'id,name,slug'
-    )
+    .select('id,name,slug')
     .eq('slug', slug)
     .maybeSingle()
 
-
   if (subjectError) {
-
-    console.error(
-      'Subject error:',
-      subjectError
-    )
-
+    console.error('Subject error:', subjectError)
     return []
   }
-
 
   if (!subject) {
+    console.error('Subject not found:', slug)
     return []
   }
 
+  let selectedTopicId = topicId
 
-  if (topicSlug) {
-
+  if (!selectedTopicId && topicSlug) {
     const {
       data: topic,
       error: topicError
@@ -1631,108 +1605,61 @@ async function loadQuestions(
       .eq('slug', topicSlug)
       .maybeSingle()
 
-
     if (topicError) {
-
-      console.error(
-        'Topic error:',
-        topicError
-      )
-
+      console.error('Topic error:', topicError)
       return []
     }
-
 
     if (!topic) {
-
-      console.error(
-        'Topic not found:',
-        topicSlug
-      )
-
+      console.error('Topic not found:', topicSlug)
       return []
     }
 
-
-    const {
-      data,
-      error
-    } = await supabase
-      .from('questions')
-      .select(
-        'id,question_text,option_a,option_b,option_c,option_d,correct_option,explanation,topic_id'
-      )
-      .eq(
-        'is_published',
-        true
-      )
-      .eq(
-        'subject',
-        subject.name
-      )
-      .eq(
-        'topic_id',
-        topic.id
-      )
-      .order(
-        'id',
-        {
-          ascending: true
-        }
-      )
-      .limit(10)
-
-
-    if (error) {
-
-      console.error(
-        'Question error:',
-        error
-      )
-
-      return []
-    }
-
-
-    return data || []
+    selectedTopicId = topic.id
   }
 
-
-  const {
-    data,
-    error
-  } = await supabase
+  let query = supabase
     .from('questions')
     .select(
       'id,question_text,option_a,option_b,option_c,option_d,correct_option,explanation,topic_id'
     )
-    .eq(
-      'is_published',
-      true
-    )
-    .eq(
-      'subject',
-      subject.name
-    )
-    .order(
-      'id',
-      {
-        ascending: true
-      }
-    )
+    .eq('is_published', true)
+    .eq('subject', subject.name)
+    .order('id', { ascending: true })
     .limit(10)
 
+  if (selectedTopicId) {
+    const {
+      data: topics,
+      error: topicsError
+    } = await supabase
+      .from('topics')
+      .select('id,parent_id')
+      .eq('subject_id', subject.id)
+      .eq('is_active', true)
 
-  if (error) {
+    if (topicsError) {
+      console.error('Topics error:', topicsError)
+      return []
+    }
 
-    console.error(
-      'Question error:',
-      error
+    const topicIds = getTopicIdsForPractice(
+      topics || [],
+      selectedTopicId
     )
 
-    return []
+    query = query.in('topic_id', topicIds)
   }
 
+  const {
+    data,
+    error
+  } = await query
+
+  if (error) {
+    console.error('Question error:', error)
+    return []
+  }
 
   return data || []
 }
