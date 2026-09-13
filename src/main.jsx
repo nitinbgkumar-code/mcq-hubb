@@ -2025,6 +2025,12 @@ function AdminPanel() {
   const [selectedSubject, setSelectedSubject] = useState('')
   const [selectedTopic, setSelectedTopic] = useState('')
   const [editingId, setEditingId] = useState(null)
+  const [bulkFile, setBulkFile] = useState(null)
+  const [bulkPreview, setBulkPreview] = useState([])
+  const [bulkError, setBulkError] = useState('')
+  const [bulkUploading, setBulkUploading] = useState(false)
+  const [bulkResult, setBulkResult] = useState('')
+
   const [form, setForm] = useState({
     question_text: '',
     option_a: '',
@@ -2259,6 +2265,44 @@ function AdminPanel() {
     )
   }
 
+  function parseCsvLine(line) {
+    const values = []; let current = ''; let quoted = false
+    for (let i = 0; i < line.length; i += 1) {
+      const ch = line[i]
+      if (ch === '"') { if (quoted && line[i + 1] === '"') { current += '"'; i += 1 } else quoted = !quoted }
+      else if (ch === ',' && !quoted) { values.push(current.trim()); current = '' }
+      else current += ch
+    }
+    values.push(current.trim()); return values
+  }
+  async function handleBulkFile(event) {
+    const file = event.target.files?.[0]; setBulkFile(file || null); setBulkPreview([]); setBulkError(''); setBulkResult('')
+    if (!file) return
+    try {
+      const text = (await file.text()).replace(/^\uFEFF/, '').trim(); if (!text) throw new Error('File is empty.')
+      let rows
+      if (file.name.toLowerCase().endsWith('.json')) { const parsed = JSON.parse(text); rows = Array.isArray(parsed) ? parsed : parsed.questions; if (!Array.isArray(rows)) throw new Error('JSON must be an array or contain a questions array.') }
+      else { const lines = text.split(/\r?\n/).filter(Boolean); const headers = parseCsvLine(lines[0]).map(h => h.toLowerCase().replace(/\s+/g, '_')); rows = lines.slice(1).map(line => { const vals = parseCsvLine(line); return headers.reduce((o,h,i) => ({...o,[h]:vals[i] || ''}), {}) }) }
+      const normalized = rows.map((r,i) => ({ rowNumber:i+2, question_text:r.question_text||r.question||'', option_a:r.option_a||r.a||'', option_b:r.option_b||r.b||'', option_c:r.option_c||r.c||'', option_d:r.option_d||r.d||'', correct_option:Number(r.correct_option||r.correct||1), explanation:r.explanation||'', subject:r.subject||'', topic:r.topic||r.topic_slug||'', is_published:String(r.is_published||r.published||'false').toLowerCase()==='true' }))
+      const bad = normalized.find(r => !r.question_text||!r.option_a||!r.option_b||!r.option_c||!r.option_d||!r.subject||![1,2,3,4].includes(r.correct_option))
+      if (bad) throw new Error(`Row ${bad.rowNumber}: question, all options, subject and correct_option (1-4) are required.`)
+      setBulkPreview(normalized)
+    } catch (e) { setBulkError(e.message || 'Could not read file.') }
+  }
+  async function uploadBulkQuestions() {
+    if (!bulkPreview.length) return; setBulkUploading(true); setBulkError(''); setBulkResult('')
+    try {
+      const subjectMap = new Map(subjects.map(s => [s.name.toLowerCase(), s])); const topicMap = new Map(topics.map(t => [`${t.subject_id}:${t.name.toLowerCase()}`, t]))
+      const payload = bulkPreview.map(r => { const subject = subjectMap.get(r.subject.toLowerCase()); if (!subject) throw new Error(`Subject not found: ${r.subject}`); const topic = r.topic ? topicMap.get(`${subject.id}:${r.topic.toLowerCase()}`) : null; return {subject:subject.name, topic_id:topic?.id||null, question_text:r.question_text, option_a:r.option_a, option_b:r.option_b, option_c:r.option_c, option_d:r.option_d, correct_option:r.correct_option, explanation:r.explanation, is_published:r.is_published} })
+      const { error } = await supabase.from('questions').insert(payload); if (error) throw error
+      setBulkResult(`${payload.length} questions uploaded successfully.`); setBulkPreview([]); setBulkFile(null); await loadAdminData()
+    } catch (e) { setBulkError(e.message || 'Bulk upload failed.') } finally { setBulkUploading(false) }
+  }
+  function downloadBulkTemplate() {
+    const csv = 'subject,topic,question_text,option_a,option_b,option_c,option_d,correct_option,explanation,is_published\nIndian History,Indus Valley Civilization,The Great Bath was discovered at which site?,Harappa,Mohenjo-daro,Lothal,Dholavira,2,The Great Bath was discovered at Mohenjo-daro.,true\n'
+    const url = URL.createObjectURL(new Blob([csv], {type:'text/csv;charset=utf-8;'})); const a = document.createElement('a'); a.href=url; a.download='mcq-bulk-template.csv'; a.click(); URL.revokeObjectURL(url)
+  }
+
   return (
     <section className="section page">
       <div className="container">
@@ -2270,6 +2314,21 @@ function AdminPanel() {
           </div>
           <button className="outline-btn" onClick={logout}>Logout</button>
         </div>
+
+        <section className="admin-form" style={{ marginBottom: 24 }}>
+          <h2>Bulk MCQ Upload</h2>
+          <p>CSV या JSON upload करें। CSV headers: subject, topic, question_text, option_a, option_b, option_c, option_d, correct_option, explanation, is_published</p>
+          <button type="button" onClick={downloadBulkTemplate}>Download CSV Template</button>
+          <input type="file" accept=".csv,.json" onChange={handleBulkFile} />
+          {bulkFile && <p>Selected: {bulkFile.name}</p>}
+          {bulkError && <p style={{color:'crimson'}}>{bulkError}</p>}
+          {bulkResult && <p style={{color:'green'}}>{bulkResult}</p>}
+          {bulkPreview.length > 0 && <>
+            <p><strong>{bulkPreview.length}</strong> questions ready.</p>
+            <pre style={{whiteSpace:'pre-wrap'}}>{JSON.stringify(bulkPreview.slice(0,3), null, 2)}</pre>
+            <button type="button" disabled={bulkUploading} onClick={uploadBulkQuestions}>{bulkUploading ? 'Uploading...' : `Upload ${bulkPreview.length} Questions`}</button>
+          </>}
+        </section>
 
         <form className="admin-form" onSubmit={saveQuestion}>
           <h2>{editingId ? 'Edit Question' : 'Add New Question'}</h2>
