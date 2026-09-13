@@ -588,37 +588,21 @@ function SubjectDetail() {
         <SectionHeading
           eyebrow="SUBJECT"
           title={subject.name}
-          copy="Choose a topic to start focused practice. You can later layer mock tests and analytics on top of this same structure."
+          copy="Choose a topic or subtopic to start focused practice."
         />
 
         <div className="topic-layout">
           <div className="topic-list">
+
             {roots.map((topic) => (
-              <div className="topic-row" key={topic.id}>
-                <div>
-                  <h3>{topic.name}</h3>
-
-                  <p>
-                    {
-                      topics.filter(
-                        (item) => item.parent_id === topic.id
-                      ).length
-                    }{' '}
-                    subtopics
-                  </p>
-                </div>
-
-                <Link
-                  className="outline-btn"
-                  to={`/practice/${subject.slug}?topic=${encodeURIComponent(
-                    topic.slug
-                  )}`}
-                >
-                  Practice
-                  <ArrowRight size={16} />
-                </Link>
-              </div>
+              <TopicNode
+                key={topic.id}
+                topic={topic}
+                topics={topics}
+                level={0}
+              />
             ))}
+
           </div>
 
           <div className="sidebar-card">
@@ -627,8 +611,7 @@ function SubjectDetail() {
             <h3>Mixed practice</h3>
 
             <p>
-              Pull questions across this subject for a broader revision
-              session.
+              Pull questions across this subject for broader revision.
             </p>
 
             <Link
@@ -644,6 +627,92 @@ function SubjectDetail() {
   )
 }
 
+
+function TopicNode({ topic, topics, level = 0 }) {
+  const [open, setOpen] = useState(level === 0)
+
+  const children = topics
+    .filter((item) => item.parent_id === topic.id)
+    .sort(
+      (a, b) =>
+        (a.display_order || 0) - (b.display_order || 0)
+    )
+
+  const hasChildren = children.length > 0
+
+  const subjectSlug =
+    window.location.hash
+      .split('/subjects/')[1]
+      ?.split('?')[0] || ''
+
+  return (
+    <div
+      className="topic-tree-node"
+      style={{
+        marginLeft: `${level * 20}px`
+      }}
+    >
+      <div className="topic-row">
+        <div style={{ flex: 1 }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px'
+            }}
+          >
+            {hasChildren && (
+              <button
+                type="button"
+                className="outline-btn"
+                onClick={() => setOpen((value) => !value)}
+                style={{
+                  minWidth: '38px',
+                  padding: '8px 10px'
+                }}
+              >
+                {open ? '−' : '+'}
+              </button>
+            )}
+
+            <div>
+              <h3>{topic.name}</h3>
+
+              <p>
+                {hasChildren
+                  ? `${children.length} subtopics`
+                  : 'Topic'}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <Link
+          className="outline-btn"
+          to={`/practice/${subjectSlug}?topic=${encodeURIComponent(
+            topic.slug
+          )}`}
+        >
+          Practice
+          <ArrowRight size={16} />
+        </Link>
+      </div>
+
+      {open && hasChildren && (
+        <div className="topic-children">
+          {children.map((child) => (
+            <TopicNode
+              key={child.id}
+              topic={child}
+              topics={topics}
+              level={level + 1}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
 
 async function loadSubject(slug) {
   if (supabaseConfigured && supabase) {
