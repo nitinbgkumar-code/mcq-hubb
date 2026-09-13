@@ -752,73 +752,48 @@ function SubjectDetail() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-
     loadSubject(slug)
-      .then(
-        ({
-          subject: loadedSubject,
-          topics: loadedTopics
-        }) => {
-
-          setSubject(loadedSubject)
-          setTopics(loadedTopics)
-
-        }
-      )
+      .then(({ subject: loadedSubject, topics: loadedTopics }) => {
+        setSubject(loadedSubject)
+        setTopics(loadedTopics)
+      })
       .finally(() => setLoading(false))
-
   }, [slug])
-
 
   if (loading) {
     return <Loading />
   }
 
-
   if (!subject) {
     return (
       <section className="section page">
-
         <div className="container">
-
           <div className="demo-note">
             Subject not found.
           </div>
-
         </div>
-
       </section>
     )
   }
 
-
   const roots = topics
-    .filter(
-      (topic) =>
-        !topic.parent_id
-    )
+    .filter((topic) => topic.parent_id === null)
     .sort(
       (a, b) =>
         (a.display_order || 0) -
         (b.display_order || 0)
     )
 
-
   return (
     <section className="section page">
-
       <div className="container">
 
         <button
           className="back-link"
-          onClick={() =>
-            navigate('/subjects')
-          }
+          onClick={() => navigate('/subjects')}
         >
-          <ChevronLeft size={17} />
-          All subjects
+          ← All subjects
         </button>
-
 
         <SectionHeading
           eyebrow="SUBJECT"
@@ -826,18 +801,17 @@ function SubjectDetail() {
           copy="Select a section to explore its topics and subtopics."
         />
 
-
         <div className="topic-layout">
 
           <div className="topic-list">
 
             {roots.map((topic) => {
 
-              const childCount =
-                topics.filter(
-                  (item) =>
-                    item.parent_id === topic.id
-                ).length
+              const hasChildren = topics.some(
+                (child) =>
+                  String(child.parent_id) ===
+                  String(topic.id)
+              )
 
               return (
                 <div
@@ -849,14 +823,17 @@ function SubjectDetail() {
                     <h3>{topic.name}</h3>
 
                     <p>
-                      {childCount > 0
-                        ? `${childCount} subtopics`
+                      {hasChildren
+                        ? `${topics.filter(
+                            (child) =>
+                              String(child.parent_id) ===
+                              String(topic.id)
+                          ).length} subtopics`
                         : 'Question Bank'}
                     </p>
                   </div>
 
-
-                  {childCount > 0 ? (
+                  {hasChildren ? (
                     <Link
                       className="outline-btn"
                       to={`/subjects/${subject.slug}/topic/${topic.id}`}
@@ -867,7 +844,9 @@ function SubjectDetail() {
                   ) : (
                     <Link
                       className="outline-btn"
-                      to={`/practice/${subject.slug}?topic=${encodeURIComponent(topic.slug)}`}
+                      to={`/practice/${subject.slug}?topic=${encodeURIComponent(
+                        topic.slug
+                      )}`}
                     >
                       Question Bank
                       <ArrowRight size={16} />
@@ -880,7 +859,6 @@ function SubjectDetail() {
 
           </div>
 
-
           <div className="sidebar-card">
 
             <div className="eyebrow">
@@ -892,8 +870,7 @@ function SubjectDetail() {
             </h3>
 
             <p>
-              Pull questions across this entire
-              subject for broader revision.
+              Practice questions from the complete subject.
             </p>
 
             <Link
@@ -906,14 +883,10 @@ function SubjectDetail() {
           </div>
 
         </div>
-
       </div>
-
     </section>
   )
 }
-
-
 /* =========================================================
    TOPIC DETAIL PAGE
    ========================================================= */
