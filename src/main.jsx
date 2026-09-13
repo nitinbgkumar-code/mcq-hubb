@@ -10,6 +10,7 @@ import {
   useParams,
   useSearchParams
 } from 'react-router-dom'
+
 import {
   ArrowRight,
   BookOpen,
@@ -23,11 +24,18 @@ import {
   Sparkles,
   Target,
   Trophy,
-  X
+  X,
+  ChevronRight,
+  ChevronLeft
 } from 'lucide-react'
+
 import { supabase, supabaseConfigured } from './supabase'
 import './styles.css'
 
+
+/* =========================================================
+   EXAM TRACKS
+   ========================================================= */
 
 const EXAMS = [
   {
@@ -61,11 +69,31 @@ const EXAMS = [
 ]
 
 
+/* =========================================================
+   FALLBACK SUBJECTS
+   ========================================================= */
+
 const fallbackSubjects = [
-  { id: 1, name: 'Indian History', slug: 'indian-history' },
-  { id: 2, name: 'World History', slug: 'world-history' },
-  { id: 3, name: 'Indian Geography', slug: 'indian-geography' },
-  { id: 4, name: 'Indian Economy', slug: 'indian-economy' },
+  {
+    id: 1,
+    name: 'Indian History',
+    slug: 'indian-history'
+  },
+  {
+    id: 2,
+    name: 'World History',
+    slug: 'world-history'
+  },
+  {
+    id: 3,
+    name: 'Indian Geography',
+    slug: 'indian-geography'
+  },
+  {
+    id: 4,
+    name: 'Indian Economy',
+    slug: 'indian-economy'
+  },
   {
     id: 5,
     name: 'Indian Polity & Constitution',
@@ -98,6 +126,10 @@ const fallbackSubjects = [
   }
 ]
 
+
+/* =========================================================
+   DEMO QUESTIONS
+   ========================================================= */
 
 const demoQuestions = [
   {
@@ -139,6 +171,10 @@ const demoQuestions = [
 ]
 
 
+/* =========================================================
+   APP
+   ========================================================= */
+
 function App() {
   return (
     <HashRouter>
@@ -148,6 +184,11 @@ function App() {
     </HashRouter>
   )
 }
+
+
+/* =========================================================
+   SHELL
+   ========================================================= */
 
 function Shell() {
   const location = useLocation()
@@ -164,9 +205,26 @@ function Shell() {
       <main>
         <Routes>
           <Route path="/" element={<Home />} />
-          <Route path="/subjects" element={<Subjects />} />
-          <Route path="/subjects/:slug" element={<SubjectDetail />} />
-          <Route path="/practice/:slug" element={<Practice />} />
+
+          <Route
+            path="/subjects"
+            element={<Subjects />}
+          />
+
+          <Route
+            path="/subjects/:slug"
+            element={<SubjectDetail />}
+          />
+
+          <Route
+            path="/subjects/:slug/topic/:topicId"
+            element={<TopicDetail />}
+          />
+
+          <Route
+            path="/practice/:slug"
+            element={<Practice />}
+          />
         </Routes>
       </main>
 
@@ -176,12 +234,18 @@ function Shell() {
 }
 
 
+/* =========================================================
+   HEADER
+   ========================================================= */
+
 function Header({ onMenu }) {
   return (
     <header className="site-header">
       <div className="container header-inner">
+
         <Link to="/" className="brand">
           <div className="brand-mark">M</div>
+
           <span>
             MCQ <b>Hub</b>
           </span>
@@ -194,27 +258,42 @@ function Header({ onMenu }) {
         </nav>
 
         <div className="header-actions">
-          <Link className="ghost-btn" to="/subjects">
+          <Link
+            className="ghost-btn"
+            to="/subjects"
+          >
             Explore
           </Link>
 
-          <button className="menu-btn" onClick={onMenu}>
+          <button
+            className="menu-btn"
+            onClick={onMenu}
+          >
             <Menu size={22} />
           </button>
         </div>
+
       </div>
     </header>
   )
 }
 
 
+/* =========================================================
+   MOBILE MENU
+   ========================================================= */
+
 function MobileMenu({ onClose }) {
   return (
-    <div className="mobile-overlay" onClick={onClose}>
+    <div
+      className="mobile-overlay"
+      onClick={onClose}
+    >
       <aside
         className="mobile-drawer"
         onClick={(e) => e.stopPropagation()}
       >
+
         <div className="drawer-head">
           <span>MCQ Hub</span>
 
@@ -223,28 +302,43 @@ function MobileMenu({ onClose }) {
           </button>
         </div>
 
-        <Link to="/" onClick={onClose}>
+        <Link
+          to="/"
+          onClick={onClose}
+        >
           Home
         </Link>
 
-        <Link to="/subjects" onClick={onClose}>
+        <Link
+          to="/subjects"
+          onClick={onClose}
+        >
           Subjects
         </Link>
 
-        <a href="#why" onClick={onClose}>
+        <a
+          href="#why"
+          onClick={onClose}
+        >
           Why MCQ Hub
         </a>
+
       </aside>
     </div>
   )
 }
 
 
+/* =========================================================
+   HOME
+   ========================================================= */
+
 function Home() {
   return (
     <>
       <section className="hero">
         <div className="container hero-grid">
+
           <div>
             <div className="eyebrow">
               <Sparkles size={15} />
@@ -258,23 +352,30 @@ function Home() {
             </h1>
 
             <p className="hero-copy">
-              MCQ Hub is being built as a focused question platform for
-              UPSC, CLAT, AILET, NEET, CA and beyond — organised by exam,
-              subject and topic.
+              MCQ Hub is being built as a focused question
+              platform for UPSC, CLAT, AILET, NEET, CA and
+              beyond — organised by exam, subject and topic.
             </p>
 
             <div className="hero-cta">
-              <Link className="primary-btn" to="/subjects">
+              <Link
+                className="primary-btn"
+                to="/subjects"
+              >
                 Explore Question Bank
                 <ArrowRight size={18} />
               </Link>
 
-              <a className="secondary-link" href="#exams">
+              <a
+                className="secondary-link"
+                href="#exams"
+              >
                 Browse exams
               </a>
             </div>
 
             <div className="trust-row">
+
               <span>
                 <ShieldCheck size={16} />
                 Structured syllabus
@@ -289,13 +390,18 @@ function Home() {
                 <Target size={16} />
                 Exam focused
               </span>
+
             </div>
           </div>
 
+
           <div className="hero-card">
+
             <div className="hero-card-top">
               <span>Today’s Practice</span>
-              <span className="status-dot">Live</span>
+              <span className="status-dot">
+                Live
+              </span>
             </div>
 
             <div className="score-circle">
@@ -306,6 +412,7 @@ function Home() {
             </div>
 
             <div className="mini-stats">
+
               <div>
                 <b>42</b>
                 <span>Attempted</span>
@@ -320,18 +427,29 @@ function Home() {
                 <b>07</b>
                 <span>To review</span>
               </div>
+
             </div>
 
             <div className="progress">
-              <span style={{ width: '82%' }} />
+              <span
+                style={{
+                  width: '82%'
+                }}
+              />
             </div>
+
           </div>
+
         </div>
       </section>
 
 
-      <section className="section" id="exams">
+      <section
+        className="section"
+        id="exams"
+      >
         <div className="container">
+
           <SectionHeading
             eyebrow="EXAM TRACKS"
             title="Built around the exams you care about"
@@ -339,13 +457,17 @@ function Home() {
           />
 
           <div className="exam-grid">
+
             {EXAMS.map((exam) => (
               <Link
                 key={exam.key}
                 to="/subjects"
                 className={`exam-card ${exam.accent}`}
               >
-                <div className="exam-icon">{exam.icon}</div>
+
+                <div className="exam-icon">
+                  {exam.icon}
+                </div>
 
                 <div>
                   <h3>{exam.title}</h3>
@@ -353,23 +475,32 @@ function Home() {
                 </div>
 
                 <ArrowRight size={18} />
+
               </Link>
             ))}
+
           </div>
+
         </div>
       </section>
 
 
-      <section className="section soft" id="why">
+      <section
+        className="section soft"
+        id="why"
+      >
         <div className="container two-col">
+
           <div>
+
             <SectionHeading
               eyebrow="WHY MCQ HUB"
               title="Your database is the product moat."
-              copy="A deep subject → topic hierarchy makes every question searchable, reusable and measurable. This starter keeps that structure at the centre of the UI."
+              copy="A deep subject → topic hierarchy makes every question searchable, reusable and measurable."
             />
 
             <div className="feature-list">
+
               <Feature
                 icon={<LayoutDashboard />}
                 title="Clean hierarchy"
@@ -387,49 +518,80 @@ function Home() {
                 title="Results that matter"
                 text="Accuracy, attempts, score and review lists can sit on top of the same question bank."
               />
+
             </div>
+
           </div>
 
+
           <div className="architecture-card">
-            <div className="arch-title">MCQ Hub structure</div>
 
-            <div className="arch-node root">Exam</div>
+            <div className="arch-title">
+              MCQ Hub structure
+            </div>
+
+            <div className="arch-node root">
+              Exam
+            </div>
+
             <div className="arch-line" />
 
-            <div className="arch-node">Subject</div>
+            <div className="arch-node">
+              Subject
+            </div>
+
             <div className="arch-line" />
 
-            <div className="arch-node">Topic</div>
+            <div className="arch-node">
+              Topic
+            </div>
+
             <div className="arch-line" />
 
-            <div className="arch-node">MCQ + Explanation</div>
+            <div className="arch-node">
+              MCQ + Explanation
+            </div>
+
             <div className="arch-line" />
 
             <div className="arch-node result">
               Result + Analytics
             </div>
+
           </div>
+
         </div>
       </section>
 
 
       <section className="section">
         <div className="container callout">
-          <div>
-            <div className="eyebrow">NEXT STEP</div>
 
-            <h2>Your Supabase data is ready for the UI.</h2>
+          <div>
+
+            <div className="eyebrow">
+              QUESTION BANK
+            </div>
+
+            <h2>
+              Explore the complete syllabus.
+            </h2>
 
             <p>
-              Connect your project keys, then this starter can pull the real
-              subjects and questions instead of demo data.
+              Subjects and topics are connected to
+              your Supabase database.
             </p>
+
           </div>
 
-          <Link className="primary-btn" to="/subjects">
+          <Link
+            className="primary-btn"
+            to="/subjects"
+          >
             Open Subjects
             <ArrowRight size={18} />
           </Link>
+
         </div>
       </section>
     </>
@@ -437,24 +599,33 @@ function Home() {
 }
 
 
+/* =========================================================
+   SUBJECTS PAGE
+   ========================================================= */
+
 function Subjects() {
   const [subjects, setSubjects] = useState([])
   const [query, setQuery] = useState('')
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    loadSubjects(setSubjects).finally(() => setLoading(false))
+    loadSubjects(setSubjects)
+      .finally(() => setLoading(false))
   }, [])
 
   const filtered = useMemo(() => {
     return subjects.filter((subject) =>
-      subject.name.toLowerCase().includes(query.toLowerCase())
+      subject.name
+        .toLowerCase()
+        .includes(query.toLowerCase())
     )
   }, [subjects, query])
 
   return (
     <section className="section page">
+
       <div className="container">
+
         <SectionHeading
           eyebrow="QUESTION BANK"
           title="Subjects"
@@ -462,78 +633,115 @@ function Subjects() {
         />
 
         <div className="searchbar">
+
           <Search size={19} />
 
           <input
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) =>
+              setQuery(e.target.value)
+            }
             placeholder="Search subjects..."
           />
+
         </div>
+
 
         {loading ? (
           <Loading />
         ) : (
           <div className="subject-grid">
+
             {filtered.map((subject, index) => (
               <Link
                 key={subject.id}
                 to={`/subjects/${subject.slug}`}
                 className="subject-card"
               >
+
                 <div className="subject-number">
                   {String(index + 1).padStart(2, '0')}
                 </div>
 
                 <div>
                   <h3>{subject.name}</h3>
-                  <p>Open subject hierarchy</p>
+                  <p>
+                    Open subject hierarchy
+                  </p>
                 </div>
 
                 <ArrowRight size={18} />
+
               </Link>
             ))}
+
           </div>
         )}
 
+
         {!supabaseConfigured && (
           <div className="demo-note">
-            Supabase is not connected yet, so this page is using a fallback
-            subject list. Add the values from your GitHub Actions secrets to
-            load your live database.
+            Supabase is not connected yet.
           </div>
         )}
+
 
         {!loading && filtered.length === 0 && (
           <div className="demo-note">
             No subjects found.
           </div>
         )}
+
       </div>
+
     </section>
   )
 }
 
 
+/* =========================================================
+   LOAD SUBJECTS
+   ========================================================= */
+
 async function loadSubjects(setter) {
-  if (supabaseConfigured && supabase) {
-    const { data, error } = await supabase
+
+  if (
+    supabaseConfigured &&
+    supabase
+  ) {
+
+    const {
+      data,
+      error
+    } = await supabase
       .from('subjects')
       .select('id,name,slug')
       .eq('is_active', true)
-      .order('display_order', { ascending: true })
+      .order(
+        'display_order',
+        {
+          ascending: true
+        }
+      )
 
     if (!error && data) {
       setter(data)
       return
     }
 
-    console.error('Subjects error:', error)
+    console.error(
+      'Subjects error:',
+      error
+    )
   }
 
   setter(fallbackSubjects)
 }
 
+
+/* =========================================================
+   SUBJECT ROOT PAGE
+   ========================================================= */
 
 function SubjectDetail() {
   const { slug } = useParams()
@@ -544,74 +752,148 @@ function SubjectDetail() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+
     loadSubject(slug)
-      .then(({ subject: loadedSubject, topics: loadedTopics }) => {
-        setSubject(loadedSubject)
-        setTopics(loadedTopics)
-      })
+      .then(
+        ({
+          subject: loadedSubject,
+          topics: loadedTopics
+        }) => {
+
+          setSubject(loadedSubject)
+          setTopics(loadedTopics)
+
+        }
+      )
       .finally(() => setLoading(false))
+
   }, [slug])
+
 
   if (loading) {
     return <Loading />
   }
 
+
   if (!subject) {
     return (
       <section className="section page">
+
         <div className="container">
+
           <div className="demo-note">
             Subject not found.
           </div>
+
         </div>
+
       </section>
     )
   }
 
+
   const roots = topics
-    .filter((topic) => !topic.parent_id)
+    .filter(
+      (topic) =>
+        !topic.parent_id
+    )
     .sort(
       (a, b) =>
-        (a.display_order || 0) - (b.display_order || 0)
+        (a.display_order || 0) -
+        (b.display_order || 0)
     )
+
 
   return (
     <section className="section page">
+
       <div className="container">
+
         <button
           className="back-link"
-          onClick={() => navigate('/subjects')}
+          onClick={() =>
+            navigate('/subjects')
+          }
         >
-          ← All subjects
+          <ChevronLeft size={17} />
+          All subjects
         </button>
+
 
         <SectionHeading
           eyebrow="SUBJECT"
           title={subject.name}
-          copy="Choose a topic or subtopic to start focused practice."
+          copy="Select a section to explore its topics and subtopics."
         />
 
+
         <div className="topic-layout">
+
           <div className="topic-list">
 
-            {roots.map((topic) => (
-              <TopicNode
-                key={topic.id}
-                topic={topic}
-                topics={topics}
-                level={0}
-              />
-            ))}
+            {roots.map((topic) => {
+
+              const childCount =
+                topics.filter(
+                  (item) =>
+                    item.parent_id === topic.id
+                ).length
+
+              return (
+                <div
+                  className="topic-row"
+                  key={topic.id}
+                >
+
+                  <div>
+                    <h3>{topic.name}</h3>
+
+                    <p>
+                      {childCount > 0
+                        ? `${childCount} subtopics`
+                        : 'Question Bank'}
+                    </p>
+                  </div>
+
+
+                  {childCount > 0 ? (
+                    <Link
+                      className="outline-btn"
+                      to={`/subjects/${subject.slug}/topic/${topic.id}`}
+                    >
+                      Open
+                      <ChevronRight size={17} />
+                    </Link>
+                  ) : (
+                    <Link
+                      className="outline-btn"
+                      to={`/practice/${subject.slug}?topic=${encodeURIComponent(topic.slug)}`}
+                    >
+                      Question Bank
+                      <ArrowRight size={16} />
+                    </Link>
+                  )}
+
+                </div>
+              )
+            })}
 
           </div>
 
-          <div className="sidebar-card">
-            <div className="eyebrow">QUICK START</div>
 
-            <h3>Mixed practice</h3>
+          <div className="sidebar-card">
+
+            <div className="eyebrow">
+              QUICK START
+            </div>
+
+            <h3>
+              Mixed practice
+            </h3>
 
             <p>
-              Pull questions across this subject for broader revision.
+              Pull questions across this entire
+              subject for broader revision.
             </p>
 
             <Link
@@ -620,123 +902,360 @@ function SubjectDetail() {
             >
               Start MCQs
             </Link>
+
           </div>
+
         </div>
+
       </div>
+
     </section>
   )
 }
 
 
-function TopicNode({ topic, topics, level = 0 }) {
-  const [open, setOpen] = useState(level === 0)
+/* =========================================================
+   TOPIC DETAIL PAGE
+   ========================================================= */
 
-  const children = topics
-    .filter((item) => item.parent_id === topic.id)
-    .sort(
-      (a, b) =>
-        (a.display_order || 0) - (b.display_order || 0)
+function TopicDetail() {
+  const { slug, topicId } = useParams()
+  const navigate = useNavigate()
+
+  const [subject, setSubject] = useState(null)
+  const [topics, setTopics] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+
+    loadTopicPage(
+      slug,
+      topicId
+    )
+      .then(
+        ({
+          subject: loadedSubject,
+          topics: loadedTopics
+        }) => {
+
+          setSubject(loadedSubject)
+          setTopics(loadedTopics)
+
+        }
+      )
+      .finally(() => setLoading(false))
+
+  }, [slug, topicId])
+
+
+  if (loading) {
+    return <Loading />
+  }
+
+
+  if (!subject) {
+    return (
+      <section className="section page">
+
+        <div className="container">
+
+          <div className="demo-note">
+            Subject not found.
+          </div>
+
+        </div>
+
+      </section>
+    )
+  }
+
+
+  const currentTopic =
+    topics.find(
+      (topic) =>
+        String(topic.id) === String(topicId)
     )
 
-  const hasChildren = children.length > 0
 
-  const subjectSlug =
-    window.location.hash
-      .split('/subjects/')[1]
-      ?.split('?')[0] || ''
+  if (!currentTopic) {
+    return (
+      <section className="section page">
+
+        <div className="container">
+
+          <div className="demo-note">
+            Topic not found.
+          </div>
+
+        </div>
+
+      </section>
+    )
+  }
+
+
+  const children = topics
+    .filter(
+      (topic) =>
+        String(topic.parent_id) ===
+        String(currentTopic.id)
+    )
+    .sort(
+      (a, b) =>
+        (a.display_order || 0) -
+        (b.display_order || 0)
+    )
+
+
+  const parentTopic =
+    currentTopic.parent_id
+      ? topics.find(
+          (topic) =>
+            String(topic.id) ===
+            String(currentTopic.parent_id)
+        )
+      : null
+
 
   return (
-    <div
-      className="topic-tree-node"
-      style={{
-        marginLeft: `${level * 20}px`
-      }}
-    >
-      <div className="topic-row">
-        <div style={{ flex: 1 }}>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px'
-            }}
+    <section className="section page">
+
+      <div className="container">
+
+        <div
+          style={{
+            display: 'flex',
+            gap: '10px',
+            alignItems: 'center',
+            marginBottom: '24px',
+            flexWrap: 'wrap'
+          }}
+        >
+
+          <Link
+            className="back-link"
+            to={`/subjects/${subject.slug}`}
           >
-            {hasChildren && (
-              <button
-                type="button"
-                className="outline-btn"
-                onClick={() => setOpen((value) => !value)}
+            <ChevronLeft size={17} />
+            {subject.name}
+          </Link>
+
+          {parentTopic && (
+            <>
+              <span
                 style={{
-                  minWidth: '38px',
-                  padding: '8px 10px'
+                  opacity: 0.5
                 }}
               >
-                {open ? '−' : '+'}
-              </button>
-            )}
+                /
+              </span>
 
-            <div>
-              <h3>{topic.name}</h3>
+              <span
+                style={{
+                  fontWeight: 700
+                }}
+              >
+                {parentTopic.name}
+              </span>
+            </>
+          )}
+
+        </div>
+
+
+        <SectionHeading
+          eyebrow="TOPIC"
+          title={currentTopic.name}
+          copy="Select a subtopic to continue deeper into the syllabus."
+        />
+
+
+        {children.length > 0 ? (
+
+          <div className="topic-layout">
+
+            <div className="topic-list">
+
+              {children.map((child) => {
+
+                const grandChildren =
+                  topics.filter(
+                    (item) =>
+                      String(item.parent_id) ===
+                      String(child.id)
+                  ).length
+
+                return (
+                  <div
+                    className="topic-row"
+                    key={child.id}
+                  >
+
+                    <div>
+
+                      <h3>
+                        {child.name}
+                      </h3>
+
+                      <p>
+                        {grandChildren > 0
+                          ? `${grandChildren} subtopics`
+                          : 'Question Bank'}
+                      </p>
+
+                    </div>
+
+
+                    {grandChildren > 0 ? (
+
+                      <Link
+                        className="outline-btn"
+                        to={`/subjects/${subject.slug}/topic/${child.id}`}
+                      >
+                        Open
+                        <ChevronRight size={17} />
+                      </Link>
+
+                    ) : (
+
+                      <Link
+                        className="outline-btn"
+                        to={`/practice/${subject.slug}?topic=${encodeURIComponent(child.slug)}`}
+                      >
+                        Question Bank
+                        <ArrowRight size={16} />
+                      </Link>
+
+                    )}
+
+                  </div>
+                )
+              })}
+
+            </div>
+
+
+            <div className="sidebar-card">
+
+              <div className="eyebrow">
+                CURRENT TOPIC
+              </div>
+
+              <h3>
+                {currentTopic.name}
+              </h3>
 
               <p>
-                {hasChildren
-                  ? `${children.length} subtopics`
-                  : 'Topic'}
+                Start mixed practice from this topic.
               </p>
-            </div>
-          </div>
-        </div>
 
-        <Link
-          className="outline-btn"
-          to={`/practice/${subjectSlug}?topic=${encodeURIComponent(
-            topic.slug
-          )}`}
-        >
-          Practice
-          <ArrowRight size={16} />
-        </Link>
+              <Link
+                className="primary-btn full"
+                to={`/practice/${subject.slug}?topic=${encodeURIComponent(currentTopic.slug)}`}
+              >
+                Question Bank
+              </Link>
+
+            </div>
+
+          </div>
+
+        ) : (
+
+          <div className="callout">
+
+            <div>
+
+              <div className="eyebrow">
+                QUESTION BANK
+              </div>
+
+              <h2>
+                {currentTopic.name}
+              </h2>
+
+              <p>
+                This is the lowest level currently
+                available in the topic hierarchy.
+              </p>
+
+            </div>
+
+            <Link
+              className="primary-btn"
+              to={`/practice/${subject.slug}?topic=${encodeURIComponent(currentTopic.slug)}`}
+            >
+              Open Question Bank
+              <ArrowRight size={18} />
+            </Link>
+
+          </div>
+
+        )}
+
       </div>
 
-      {open && hasChildren && (
-        <div className="topic-children">
-          {children.map((child) => (
-            <TopicNode
-              key={child.id}
-              topic={child}
-              topics={topics}
-              level={level + 1}
-            />
-          ))}
-        </div>
-      )}
-    </div>
+    </section>
   )
 }
 
+
+/* =========================================================
+   LOAD SUBJECT
+   ========================================================= */
+
 async function loadSubject(slug) {
-  if (supabaseConfigured && supabase) {
-    const { data: subject, error: subjectError } = await supabase
+
+  if (
+    supabaseConfigured &&
+    supabase
+  ) {
+
+    const {
+      data: subject,
+      error: subjectError
+    } = await supabase
       .from('subjects')
       .select('id,name,slug')
       .eq('slug', slug)
       .maybeSingle()
 
+
     if (subjectError) {
-      console.error('Subject error:', subjectError)
+      console.error(
+        'Subject error:',
+        subjectError
+      )
     }
 
+
     if (subject) {
-      const { data: topics, error: topicError } = await supabase
+
+      const {
+        data: topics,
+        error: topicError
+      } = await supabase
         .from('topics')
-        .select('id,name,slug,parent_id,display_order')
+        .select(
+          'id,name,slug,parent_id,display_order,subject_id'
+        )
         .eq('subject_id', subject.id)
         .eq('is_active', true)
-        .order('display_order', { ascending: true })
+        .order(
+          'display_order',
+          {
+            ascending: true
+          }
+        )
+
 
       if (topicError) {
-        console.error('Topics error:', topicError)
+        console.error(
+          'Topics error:',
+          topicError
+        )
       }
+
 
       return {
         subject,
@@ -745,63 +1264,148 @@ async function loadSubject(slug) {
     }
   }
 
-  const fallbackSubject =
-    fallbackSubjects.find((item) => item.slug === slug) ||
-    fallbackSubjects[0]
 
-  const baseTopics = [
-    'Foundations',
-    'Core Concepts',
-    'Important Facts',
-    'Advanced Topics'
-  ].map((name, index) => ({
-    id: `demo-${index}`,
-    name,
-    slug: name.toLowerCase().replace(/ /g, '-'),
-    parent_id: null,
-    display_order: index + 1
-  }))
+  const fallbackSubject =
+    fallbackSubjects.find(
+      (item) =>
+        item.slug === slug
+    ) ||
+    null
+
+
+  if (!fallbackSubject) {
+    return {
+      subject: null,
+      topics: []
+    }
+  }
+
+
+  const fallbackTopics = [
+    {
+      id: 'demo-root-1',
+      name: 'Foundations',
+      slug: 'foundations',
+      parent_id: null,
+      display_order: 1
+    },
+    {
+      id: 'demo-root-2',
+      name: 'Core Concepts',
+      slug: 'core-concepts',
+      parent_id: null,
+      display_order: 2
+    },
+    {
+      id: 'demo-root-3',
+      name: 'Important Facts',
+      slug: 'important-facts',
+      parent_id: null,
+      display_order: 3
+    },
+    {
+      id: 'demo-root-4',
+      name: 'Advanced Topics',
+      slug: 'advanced-topics',
+      parent_id: null,
+      display_order: 4
+    }
+  ]
+
 
   return {
     subject: fallbackSubject,
-    topics: baseTopics
+    topics: fallbackTopics
   }
 }
 
+
+/* =========================================================
+   LOAD TOPIC PAGE
+   ========================================================= */
+
+async function loadTopicPage(
+  slug,
+  topicId
+) {
+
+  const result =
+    await loadSubject(slug)
+
+
+  return result
+}
+
+
+/* =========================================================
+   PRACTICE
+   ========================================================= */
 
 function Practice() {
   const { slug } = useParams()
   const [searchParams] = useSearchParams()
 
-  const topicSlug = searchParams.get('topic')
+  const topicSlug =
+    searchParams.get('topic')
 
-  const [questions, setQuestions] = useState([])
-  const [index, setIndex] = useState(0)
-  const [selected, setSelected] = useState(null)
-  const [revealed, setRevealed] = useState(false)
-  const [score, setScore] = useState(0)
-  const [loading, setLoading] = useState(true)
+
+  const [questions, setQuestions] =
+    useState([])
+
+  const [index, setIndex] =
+    useState(0)
+
+  const [selected, setSelected] =
+    useState(null)
+
+  const [revealed, setRevealed] =
+    useState(false)
+
+  const [score, setScore] =
+    useState(0)
+
+  const [loading, setLoading] =
+    useState(true)
+
 
   useEffect(() => {
-    loadQuestions(slug, topicSlug)
+
+    loadQuestions(
+      slug,
+      topicSlug
+    )
       .then(setQuestions)
-      .finally(() => setLoading(false))
+      .finally(() =>
+        setLoading(false)
+      )
+
   }, [slug, topicSlug])
+
 
   if (loading) {
     return <Loading />
   }
 
+
   if (!questions.length) {
+
     return (
       <section className="practice-page">
-        <div className="result-panel">
-          <div className="eyebrow">NO QUESTIONS YET</div>
 
-          <h1>Question bank is empty</h1>
+        <div className="result-panel">
+
+          <div className="eyebrow">
+            QUESTION BANK
+          </div>
+
+          <h1>
+            No questions yet
+          </h1>
 
           <p>
-            Published questions for this subject have not been added yet.
+            This topic is ready for questions.
+            Once published questions are added
+            to Supabase, they will appear here.
           </p>
 
           <Link
@@ -811,30 +1415,39 @@ function Practice() {
             Back to subject
             <ArrowRight size={18} />
           </Link>
+
         </div>
+
       </section>
     )
   }
 
-  const finished = index >= questions.length
+
+  const finished =
+    index >= questions.length
+
 
   if (finished) {
+
     return (
       <section className="practice-page">
+
         <div className="result-panel">
+
           <div className="result-icon">
             <Trophy size={34} />
           </div>
 
-          <div className="eyebrow">SESSION COMPLETE</div>
+          <div className="eyebrow">
+            SESSION COMPLETE
+          </div>
 
           <h1>
             {score} / {questions.length}
           </h1>
 
           <p>
-            Nice work. This is the foundation for the full result and
-            analytics experience.
+            Nice work.
           </p>
 
           <Link
@@ -844,12 +1457,17 @@ function Practice() {
             Back to subject
             <ArrowRight size={18} />
           </Link>
+
         </div>
+
       </section>
     )
   }
 
-  const q = questions[index]
+
+  const q =
+    questions[index]
+
 
   const options = [
     q.option_a,
@@ -858,28 +1476,51 @@ function Practice() {
     q.option_d
   ]
 
-  const answer = q.correct_option
+
+  const answer =
+    Number(q.correct_option)
+
 
   const submit = () => {
-    if (selected == null) return
+
+    if (selected == null) {
+      return
+    }
 
     setRevealed(true)
 
-    if (selected === answer) {
-      setScore((currentScore) => currentScore + 1)
+    if (
+      Number(selected) ===
+      answer
+    ) {
+      setScore(
+        (currentScore) =>
+          currentScore + 1
+      )
     }
   }
 
+
   const next = () => {
+
     setSelected(null)
     setRevealed(false)
-    setIndex((currentIndex) => currentIndex + 1)
+
+    setIndex(
+      (currentIndex) =>
+        currentIndex + 1
+    )
   }
+
 
   return (
     <section className="practice-page">
+
       <div className="practice-top">
-        <Link to={`/subjects/${slug}`}>
+
+        <Link
+          to={`/subjects/${slug}`}
+        >
           ← Exit practice
         </Link>
 
@@ -887,84 +1528,138 @@ function Practice() {
           <Clock3 size={16} />
           Untimed practice
         </div>
+
       </div>
 
+
       <div className="question-shell">
+
         <div className="question-meta">
+
           <span>
-            Question {index + 1} of {questions.length}
+            Question {index + 1} of{' '}
+            {questions.length}
           </span>
 
-          <span>{score} correct</span>
+          <span>
+            {score} correct
+          </span>
+
         </div>
+
 
         <div className="question-progress">
+
           <span
             style={{
-              width: `${(index / questions.length) * 100}%`
+              width: `${
+                (index /
+                  questions.length) *
+                100
+              }%`
             }}
           />
+
         </div>
 
-        <h1>{q.question_text}</h1>
+
+        <h1>
+          {q.question_text}
+        </h1>
+
 
         <div className="options">
-          {options.map((option, optionIndex) => {
-            const number = optionIndex + 1
 
-            const className = revealed
-              ? number === answer
-                ? 'correct'
-                : number === selected
-                  ? 'wrong'
-                  : ''
-              : selected === number
-                ? 'selected'
-                : ''
+          {options.map(
+            (option, optionIndex) => {
 
-            return (
-              <button
-                disabled={revealed}
-                onClick={() => setSelected(number)}
-                className={`option ${className}`}
-                key={number}
-              >
-                <span>
-                  {String.fromCharCode(64 + number)}
-                </span>
+              const number =
+                optionIndex + 1
 
-                <b>{option}</b>
 
-                {revealed && number === answer && (
-                  <CheckCircle2 size={20} />
-                )}
-              </button>
-            )
-          })}
+              const className =
+                revealed
+                  ? number === answer
+                    ? 'correct'
+                    : number ===
+                        Number(selected)
+                      ? 'wrong'
+                      : ''
+                  : Number(selected) ===
+                      number
+                    ? 'selected'
+                    : ''
+
+
+              return (
+                <button
+                  key={number}
+                  disabled={revealed}
+                  onClick={() =>
+                    setSelected(number)
+                  }
+                  className={`option ${className}`}
+                >
+
+                  <span>
+                    {String.fromCharCode(
+                      64 + number
+                    )}
+                  </span>
+
+                  <b>
+                    {option}
+                  </b>
+
+                  {revealed &&
+                    number ===
+                      answer && (
+                      <CheckCircle2
+                        size={20}
+                      />
+                    )}
+
+                </button>
+              )
+            }
+          )}
+
         </div>
+
 
         {revealed && (
           <div className="explanation">
-            <div className="eyebrow">EXPLANATION</div>
+
+            <div className="eyebrow">
+              EXPLANATION
+            </div>
 
             <p>
               {q.explanation ||
                 'Explanation will appear here.'}
             </p>
+
           </div>
         )}
 
+
         <div className="question-footer">
+
           {!revealed ? (
+
             <button
               className="primary-btn"
               onClick={submit}
-              disabled={selected == null}
+              disabled={
+                selected == null
+              }
             >
               Check answer
               <ArrowRight size={18} />
             </button>
+
           ) : (
+
             <button
               className="primary-btn"
               onClick={next}
@@ -972,116 +1667,230 @@ function Practice() {
               Next question
               <ArrowRight size={18} />
             </button>
+
           )}
+
         </div>
+
       </div>
+
     </section>
   )
 }
 
 
-/*
-  IMPORTANT:
-  questions.subject stores the SUBJECT NAME in your database,
-  not the subject slug.
+/* =========================================================
+   LOAD QUESTIONS
+   ========================================================= */
 
-  Therefore:
-  subjects.slug -> find subject
-  subjects.name -> query questions.subject
+async function loadQuestions(
+  slug,
+  topicSlug = null
+) {
 
-  topic filtering also uses questions.topic_id when available.
-*/
-async function loadQuestions(slug, topicSlug = null) {
-  if (!supabaseConfigured || !supabase) {
+  if (
+    !supabaseConfigured ||
+    !supabase
+  ) {
     return demoQuestions
   }
 
-  const { data: subject, error: subjectError } = await supabase
+
+  const {
+    data: subject,
+    error: subjectError
+  } = await supabase
     .from('subjects')
-    .select('id,name,slug')
+    .select(
+      'id,name,slug'
+    )
     .eq('slug', slug)
     .maybeSingle()
 
+
   if (subjectError) {
-    console.error('Subject error:', subjectError)
+
+    console.error(
+      'Subject error:',
+      subjectError
+    )
+
     return []
   }
+
 
   if (!subject) {
-    console.error('Subject not found:', slug)
     return []
   }
 
-  let query = supabase
-    .from('questions')
-    .select(
-      'id,question_text,option_a,option_b,option_c,option_d,correct_option,explanation,topic_id'
-    )
-    .eq('is_published', true)
-    .eq('subject', subject.name)
-    .order('id', { ascending: true })
-    .limit(10)
 
-  /*
-    If a topic was selected, first find the topic ID.
-  */
   if (topicSlug) {
-    const { data: topic, error: topicError } = await supabase
+
+    const {
+      data: topic,
+      error: topicError
+    } = await supabase
       .from('topics')
       .select('id')
       .eq('subject_id', subject.id)
       .eq('slug', topicSlug)
       .maybeSingle()
 
+
     if (topicError) {
-      console.error('Topic error:', topicError)
+
+      console.error(
+        'Topic error:',
+        topicError
+      )
+
+      return []
     }
 
-    if (topic) {
-      query = supabase
-        .from('questions')
-        .select(
-          'id,question_text,option_a,option_b,option_c,option_d,correct_option,explanation,topic_id'
-        )
-        .eq('is_published', true)
-        .eq('subject', subject.name)
-        .eq('topic_id', topic.id)
-        .order('id', { ascending: true })
-        .limit(10)
+
+    if (!topic) {
+
+      console.error(
+        'Topic not found:',
+        topicSlug
+      )
+
+      return []
     }
+
+
+    const {
+      data,
+      error
+    } = await supabase
+      .from('questions')
+      .select(
+        'id,question_text,option_a,option_b,option_c,option_d,correct_option,explanation,topic_id'
+      )
+      .eq(
+        'is_published',
+        true
+      )
+      .eq(
+        'subject',
+        subject.name
+      )
+      .eq(
+        'topic_id',
+        topic.id
+      )
+      .order(
+        'id',
+        {
+          ascending: true
+        }
+      )
+      .limit(10)
+
+
+    if (error) {
+
+      console.error(
+        'Question error:',
+        error
+      )
+
+      return []
+    }
+
+
+    return data || []
   }
 
-  const { data, error } = await query
+
+  const {
+    data,
+    error
+  } = await supabase
+    .from('questions')
+    .select(
+      'id,question_text,option_a,option_b,option_c,option_d,correct_option,explanation,topic_id'
+    )
+    .eq(
+      'is_published',
+      true
+    )
+    .eq(
+      'subject',
+      subject.name
+    )
+    .order(
+      'id',
+      {
+        ascending: true
+      }
+    )
+    .limit(10)
+
 
   if (error) {
-    console.error('Question error:', error)
+
+    console.error(
+      'Question error:',
+      error
+    )
+
     return []
   }
+
 
   return data || []
 }
 
 
-function Feature({ icon, title, text }) {
+/* =========================================================
+   COMMON COMPONENTS
+   ========================================================= */
+
+function Feature({
+  icon,
+  title,
+  text
+}) {
   return (
     <div className="feature">
-      <div className="feature-icon">{icon}</div>
+
+      <div className="feature-icon">
+        {icon}
+      </div>
 
       <div>
+
         <h3>{title}</h3>
         <p>{text}</p>
+
       </div>
+
     </div>
   )
 }
 
 
-function SectionHeading({ eyebrow, title, copy }) {
+function SectionHeading({
+  eyebrow,
+  title,
+  copy
+}) {
   return (
     <div className="section-heading">
-      <div className="eyebrow">{eyebrow}</div>
-      <h2>{title}</h2>
-      <p>{copy}</p>
+
+      <div className="eyebrow">
+        {eyebrow}
+      </div>
+
+      <h2>
+        {title}
+      </h2>
+
+      <p>
+        {copy}
+      </p>
+
     </div>
   )
 }
@@ -1099,28 +1908,47 @@ function Loading() {
 function Footer() {
   return (
     <footer>
+
       <div className="container footer-inner">
+
         <div>
+
           <div className="brand footer-brand">
-            <div className="brand-mark">M</div>
+
+            <div className="brand-mark">
+              M
+            </div>
 
             <span>
               MCQ <b>Hub</b>
             </span>
+
           </div>
 
           <p>
-            Structured MCQ practice for competitive exams.
+            Structured MCQ practice for
+            competitive exams.
           </p>
+
         </div>
 
         <span>
-          Starter build • Supabase-ready
+          MCQ Hub • Supabase powered
         </span>
+
       </div>
+
     </footer>
   )
 }
 
 
-createRoot(document.getElementById('root')).render(<App />)
+/* =========================================================
+   MOUNT APP
+   ========================================================= */
+
+createRoot(
+  document.getElementById('root')
+).render(
+  <App />
+)
