@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import {
-  BrowserRouter,
+  HashRouter,
   Link,
   Route,
   Routes,
@@ -141,14 +141,13 @@ const demoQuestions = [
 
 function App() {
   return (
-     <BrowserRouter basename="/mcq-hubb">
+    <HashRouter>
       <Routes>
         <Route path="*" element={<Shell />} />
       </Routes>
-    </BrowserRouter>
+    </HashRouter>
   )
 }
-
 
 function Shell() {
   const location = useLocation()
