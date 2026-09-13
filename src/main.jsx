@@ -141,7 +141,7 @@ const demoQuestions = [
 
 function App() {
   return (
-    <BrowserRouter>
+     <BrowserRouter basename="/mcq-hubb">
       <Routes>
         <Route path="*" element={<Shell />} />
       </Routes>
