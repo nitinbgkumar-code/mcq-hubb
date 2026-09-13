@@ -920,85 +920,56 @@ function SubjectDetail() {
 
 function TopicDetail() {
   const { slug, topicId } = useParams()
-  const navigate = useNavigate()
 
   const [subject, setSubject] = useState(null)
   const [topics, setTopics] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-
-    loadTopicPage(
-      slug,
-      topicId
-    )
-      .then(
-        ({
-          subject: loadedSubject,
-          topics: loadedTopics
-        }) => {
-
-          setSubject(loadedSubject)
-          setTopics(loadedTopics)
-
-        }
-      )
+    loadSubject(slug)
+      .then(({ subject: loadedSubject, topics: loadedTopics }) => {
+        setSubject(loadedSubject)
+        setTopics(loadedTopics)
+      })
       .finally(() => setLoading(false))
-
-  }, [slug, topicId])
-
+  }, [slug])
 
   if (loading) {
     return <Loading />
   }
 
-
   if (!subject) {
     return (
       <section className="section page">
-
         <div className="container">
-
           <div className="demo-note">
             Subject not found.
           </div>
-
         </div>
-
       </section>
     )
   }
 
-
-  const currentTopic =
-    topics.find(
-      (topic) =>
-        String(topic.id) === String(topicId)
-    )
-
+  const currentTopic = topics.find(
+    (topic) => String(topic.id) === String(topicId)
+  )
 
   if (!currentTopic) {
     return (
       <section className="section page">
-
         <div className="container">
-
           <div className="demo-note">
             Topic not found.
           </div>
-
         </div>
-
       </section>
     )
   }
 
-
   const children = topics
     .filter(
       (topic) =>
-        String(topic.parent_id) ===
-        String(currentTopic.id)
+        String(topic.parent_id) === String(currentTopic.id)
     )
     .sort(
       (a, b) =>
@@ -1006,84 +977,39 @@ function TopicDetail() {
         (b.display_order || 0)
     )
 
-
-  const parentTopic =
-    currentTopic.parent_id
-      ? topics.find(
-          (topic) =>
-            String(topic.id) ===
-            String(currentTopic.parent_id)
-        )
-      : null
-
-
   return (
     <section className="section page">
-
       <div className="container">
 
-        <div
-          style={{
-            display: 'flex',
-            gap: '10px',
-            alignItems: 'center',
-            marginBottom: '24px',
-            flexWrap: 'wrap'
-          }}
+        <button
+          className="back-link"
+          onClick={() => window.history.back()}
         >
-
-          <Link
-            className="back-link"
-            to={`/subjects/${subject.slug}`}
-          >
-            <ChevronLeft size={17} />
-            {subject.name}
-          </Link>
-
-          {parentTopic && (
-            <>
-              <span
-                style={{
-                  opacity: 0.5
-                }}
-              >
-                /
-              </span>
-
-              <span
-                style={{
-                  fontWeight: 700
-                }}
-              >
-                {parentTopic.name}
-              </span>
-            </>
-          )}
-
-        </div>
-
+          ← Back
+        </button>
 
         <SectionHeading
           eyebrow="TOPIC"
           title={currentTopic.name}
-          copy="Select a subtopic to continue deeper into the syllabus."
+          copy={
+            children.length > 0
+              ? 'Choose a subtopic to continue.'
+              : 'This is the final topic level. Open the question bank to practice.'
+          }
         />
 
-
         {children.length > 0 ? (
-
           <div className="topic-layout">
 
             <div className="topic-list">
 
               {children.map((child) => {
 
-                const grandChildren =
-                  topics.filter(
-                    (item) =>
-                      String(item.parent_id) ===
-                      String(child.id)
-                  ).length
+                const childCount = topics.filter(
+                  (item) =>
+                    String(item.parent_id) ===
+                    String(child.id)
+                ).length
 
                 return (
                   <div
@@ -1092,22 +1018,16 @@ function TopicDetail() {
                   >
 
                     <div>
-
-                      <h3>
-                        {child.name}
-                      </h3>
+                      <h3>{child.name}</h3>
 
                       <p>
-                        {grandChildren > 0
-                          ? `${grandChildren} subtopics`
+                        {childCount > 0
+                          ? `${childCount} subtopics`
                           : 'Question Bank'}
                       </p>
-
                     </div>
 
-
-                    {grandChildren > 0 ? (
-
+                    {childCount > 0 ? (
                       <Link
                         className="outline-btn"
                         to={`/subjects/${subject.slug}/topic/${child.id}`}
@@ -1115,17 +1035,16 @@ function TopicDetail() {
                         Open
                         <ChevronRight size={17} />
                       </Link>
-
                     ) : (
-
                       <Link
                         className="outline-btn"
-                        to={`/practice/${subject.slug}?topic=${encodeURIComponent(child.slug)}`}
+                        to={`/practice/${subject.slug}?topic=${encodeURIComponent(
+                          child.slug
+                        )}`}
                       >
                         Question Bank
                         <ArrowRight size={16} />
                       </Link>
-
                     )}
 
                   </div>
@@ -1134,11 +1053,10 @@ function TopicDetail() {
 
             </div>
 
-
             <div className="sidebar-card">
 
               <div className="eyebrow">
-                CURRENT TOPIC
+                TOPIC
               </div>
 
               <h3>
@@ -1146,26 +1064,30 @@ function TopicDetail() {
               </h3>
 
               <p>
-                Start mixed practice from this topic.
+                {children.length > 0
+                  ? 'Explore the subtopics below.'
+                  : 'Open the question bank for this topic.'}
               </p>
 
-              <Link
-                className="primary-btn full"
-                to={`/practice/${subject.slug}?topic=${encodeURIComponent(currentTopic.slug)}`}
-              >
-                Question Bank
-              </Link>
+              {children.length === 0 && (
+                <Link
+                  className="primary-btn full"
+                  to={`/practice/${subject.slug}?topic=${encodeURIComponent(
+                    currentTopic.slug
+                  )}`}
+                >
+                  Open Question Bank
+                </Link>
+              )}
 
             </div>
 
           </div>
-
         ) : (
 
           <div className="callout">
 
             <div>
-
               <div className="eyebrow">
                 QUESTION BANK
               </div>
@@ -1175,15 +1097,17 @@ function TopicDetail() {
               </h2>
 
               <p>
-                This is the lowest level currently
-                available in the topic hierarchy.
+                No subtopics are below this level.
+                Questions for this topic will appear here
+                once they are added and published.
               </p>
-
             </div>
 
             <Link
               className="primary-btn"
-              to={`/practice/${subject.slug}?topic=${encodeURIComponent(currentTopic.slug)}`}
+              to={`/practice/${subject.slug}?topic=${encodeURIComponent(
+                currentTopic.slug
+              )}`}
             >
               Open Question Bank
               <ArrowRight size={18} />
@@ -1194,11 +1118,9 @@ function TopicDetail() {
         )}
 
       </div>
-
     </section>
   )
 }
-
 
 /* =========================================================
    LOAD SUBJECT
