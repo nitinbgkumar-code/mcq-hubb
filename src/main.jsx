@@ -205,6 +205,7 @@ function Shell() {
       <main>
       <Routes>
         <Route path="/" element={<Home />} />
+        <Route path="/admin" element={<AdminPanel />} />
 
         <Route
             path="/exams"
@@ -2005,6 +2006,347 @@ function ExamSubjects() {
     </section>
   )
 }
+
+/* =========================================================
+   ADMIN PANEL
+   ========================================================= */
+
+function AdminPanel() {
+  const [session, setSession] = useState(null)
+  const [checking, setChecking] = useState(true)
+  const [isAdmin, setIsAdmin] = useState(false)
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [authError, setAuthError] = useState('')
+  const [message, setMessage] = useState('')
+  const [subjects, setSubjects] = useState([])
+  const [topics, setTopics] = useState([])
+  const [questions, setQuestions] = useState([])
+  const [selectedSubject, setSelectedSubject] = useState('')
+  const [selectedTopic, setSelectedTopic] = useState('')
+  const [editingId, setEditingId] = useState(null)
+  const [form, setForm] = useState({
+    question_text: '',
+    option_a: '',
+    option_b: '',
+    option_c: '',
+    option_d: '',
+    correct_option: '1',
+    explanation: '',
+    is_published: false
+  })
+
+  useEffect(() => {
+    let active = true
+
+    async function checkSession() {
+      if (!supabaseConfigured || !supabase) {
+        setAuthError('Supabase is not configured.')
+        setChecking(false)
+        return
+      }
+
+      const { data } = await supabase.auth.getSession()
+      if (!active) return
+
+      setSession(data.session || null)
+
+      if (data.session?.user) {
+        await verifyAdmin(data.session.user.id)
+      } else {
+        setChecking(false)
+      }
+    }
+
+    checkSession()
+
+    const { data: listener } = supabase?.auth.onAuthStateChange((_event, nextSession) => {
+      setSession(nextSession || null)
+      if (nextSession?.user) {
+        verifyAdmin(nextSession.user.id)
+      } else {
+        setIsAdmin(false)
+        setChecking(false)
+      }
+    })
+
+    return () => {
+      active = false
+      listener?.subscription?.unsubscribe()
+    }
+  }, [])
+
+  async function verifyAdmin(userId) {
+    setChecking(true)
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', userId)
+      .maybeSingle()
+
+    if (error) {
+      setAuthError(error.message)
+      setIsAdmin(false)
+    } else {
+      setIsAdmin(data?.role === 'admin')
+      if (data?.role !== 'admin') {
+        setAuthError('This account does not have admin access.')
+      } else {
+        setAuthError('')
+        await loadAdminData()
+      }
+    }
+    setChecking(false)
+  }
+
+  async function login(e) {
+    e.preventDefault()
+    setAuthError('')
+    setMessage('')
+
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password
+    })
+
+    if (error) {
+      setAuthError(error.message)
+      return
+    }
+
+    setSession(data.session)
+    await verifyAdmin(data.user.id)
+  }
+
+  async function logout() {
+    await supabase.auth.signOut()
+    setSession(null)
+    setIsAdmin(false)
+  }
+
+  async function loadAdminData() {
+    const [{ data: subjectRows }, { data: topicRows }, { data: questionRows }] =
+      await Promise.all([
+        supabase.from('subjects').select('id,name,slug').eq('is_active', true).order('display_order'),
+        supabase.from('topics').select('id,name,subject_id,parent_id').eq('is_active', true).order('display_order'),
+        supabase.from('questions')
+          .select('id,subject,topic_id,question_text,option_a,option_b,option_c,option_d,correct_option,explanation,is_published')
+          .order('id', { ascending: false })
+          .limit(100)
+      ])
+
+    setSubjects(subjectRows || [])
+    setTopics(topicRows || [])
+    setQuestions(questionRows || [])
+  }
+
+  function resetForm() {
+    setEditingId(null)
+    setForm({
+      question_text: '',
+      option_a: '',
+      option_b: '',
+      option_c: '',
+      option_d: '',
+      correct_option: '1',
+      explanation: '',
+      is_published: false
+    })
+    setSelectedSubject('')
+    setSelectedTopic('')
+  }
+
+  async function saveQuestion(e) {
+    e.preventDefault()
+    setMessage('')
+    setAuthError('')
+
+    const subject = subjects.find((item) => String(item.id) === String(selectedSubject))
+    if (!subject) {
+      setAuthError('Please select a subject.')
+      return
+    }
+
+    const payload = {
+      ...form,
+      correct_option: Number(form.correct_option),
+      subject: subject.name,
+      topic_id: selectedTopic ? Number(selectedTopic) : null,
+      is_published: Boolean(form.is_published)
+    }
+
+    const result = editingId
+      ? await supabase.from('questions').update(payload).eq('id', editingId)
+      : await supabase.from('questions').insert(payload)
+
+    if (result.error) {
+      setAuthError(result.error.message)
+      return
+    }
+
+    setMessage(editingId ? 'Question updated successfully.' : 'Question added successfully.')
+    resetForm()
+    await loadAdminData()
+  }
+
+  function editQuestion(question) {
+    const subject = subjects.find((item) => item.name === question.subject)
+    setEditingId(question.id)
+    setSelectedSubject(subject ? String(subject.id) : '')
+    setSelectedTopic(question.topic_id ? String(question.topic_id) : '')
+    setForm({
+      question_text: question.question_text || '',
+      option_a: question.option_a || '',
+      option_b: question.option_b || '',
+      option_c: question.option_c || '',
+      option_d: question.option_d || '',
+      correct_option: String(question.correct_option || 1),
+      explanation: question.explanation || '',
+      is_published: Boolean(question.is_published)
+    })
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  async function deleteQuestion(id) {
+    if (!window.confirm('Delete this question permanently?')) return
+
+    const { error } = await supabase.from('questions').delete().eq('id', id)
+    if (error) {
+      setAuthError(error.message)
+      return
+    }
+
+    setMessage('Question deleted.')
+    await loadAdminData()
+  }
+
+  const visibleTopics = topics.filter(
+    (topic) => String(topic.subject_id) === String(selectedSubject)
+  )
+
+  if (checking) return <Loading />
+
+  if (!session) {
+    return (
+      <section className="section page">
+        <div className="container">
+          <SectionHeading
+            eyebrow="ADMIN ACCESS"
+            title="Admin Login"
+            copy="Sign in with your Supabase account to manage MCQ Hub questions."
+          />
+          <form className="admin-form" onSubmit={login}>
+            <label>Email</label>
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+            <label>Password</label>
+            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+            {authError && <div className="demo-note">{authError}</div>}
+            <button className="primary-btn" type="submit">Login</button>
+          </form>
+        </div>
+      </section>
+    )
+  }
+
+  if (!isAdmin) {
+    return (
+      <section className="section page">
+        <div className="container">
+          <SectionHeading eyebrow="ACCESS DENIED" title="Admin access required" copy={authError || 'Your account is not an administrator.'} />
+          <button className="primary-btn" onClick={logout}>Logout</button>
+        </div>
+      </section>
+    )
+  }
+
+  return (
+    <section className="section page">
+      <div className="container">
+        <div className="admin-heading">
+          <div>
+            <div className="eyebrow">ADMIN PANEL</div>
+            <h1>Manage Questions</h1>
+            <p>Add, edit, publish and delete MCQs.</p>
+          </div>
+          <button className="outline-btn" onClick={logout}>Logout</button>
+        </div>
+
+        <form className="admin-form" onSubmit={saveQuestion}>
+          <h2>{editingId ? 'Edit Question' : 'Add New Question'}</h2>
+
+          <label>Subject</label>
+          <select value={selectedSubject} onChange={(e) => { setSelectedSubject(e.target.value); setSelectedTopic('') }} required>
+            <option value="">Select subject</option>
+            {subjects.map((subject) => <option key={subject.id} value={subject.id}>{subject.name}</option>)}
+          </select>
+
+          <label>Topic</label>
+          <select value={selectedTopic} onChange={(e) => setSelectedTopic(e.target.value)}>
+            <option value="">Select topic (optional)</option>
+            {visibleTopics.map((topic) => <option key={topic.id} value={topic.id}>{topic.name}</option>)}
+          </select>
+
+          <label>Question</label>
+          <textarea value={form.question_text} onChange={(e) => setForm({ ...form, question_text: e.target.value })} required />
+
+          {['a', 'b', 'c', 'd'].map((letter) => (
+            <React.Fragment key={letter}>
+              <label>Option {letter.toUpperCase()}</label>
+              <input
+                value={form[`option_${letter}`]}
+                onChange={(e) => setForm({ ...form, [`option_${letter}`]: e.target.value })}
+                required
+              />
+            </React.Fragment>
+          ))}
+
+          <label>Correct option</label>
+          <select value={form.correct_option} onChange={(e) => setForm({ ...form, correct_option: e.target.value })}>
+            <option value="1">A</option>
+            <option value="2">B</option>
+            <option value="3">C</option>
+            <option value="4">D</option>
+          </select>
+
+          <label>Explanation</label>
+          <textarea value={form.explanation} onChange={(e) => setForm({ ...form, explanation: e.target.value })} />
+
+          <label className="admin-check">
+            <input type="checkbox" checked={form.is_published} onChange={(e) => setForm({ ...form, is_published: e.target.checked })} />
+            Publish this question
+          </label>
+
+          {authError && <div className="demo-note">{authError}</div>}
+          {message && <div className="demo-note">{message}</div>}
+
+          <div className="admin-actions">
+            <button className="primary-btn" type="submit">{editingId ? 'Update Question' : 'Add Question'}</button>
+            {editingId && <button className="outline-btn" type="button" onClick={resetForm}>Cancel Edit</button>}
+          </div>
+        </form>
+
+        <div className="admin-list">
+          <h2>Existing Questions</h2>
+          {questions.map((question) => (
+            <div className="admin-question" key={question.id}>
+              <div>
+                <strong>#{question.id} · {question.subject}</strong>
+                <p>{question.question_text}</p>
+                <small>{question.is_published ? 'Published' : 'Draft'}{question.topic_id ? ` · Topic ID: ${question.topic_id}` : ''}</small>
+              </div>
+              <div className="admin-actions">
+                <button className="outline-btn" onClick={() => editQuestion(question)}>Edit</button>
+                <button className="outline-btn" onClick={() => deleteQuestion(question.id)}>Delete</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+
 /* =========================================================
    MOUNT APP
    ========================================================= */
