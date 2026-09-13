@@ -1219,339 +1219,72 @@ async function loadTopicPage(
 function Practice() {
   const { slug } = useParams()
   const [searchParams] = useSearchParams()
-
   const topicId = searchParams.get('topicId')
   const topicSlug = searchParams.get('topic')
-
-
-  const [questions, setQuestions] =
-    useState([])
-
-  const [index, setIndex] =
-    useState(0)
-
-  const [selected, setSelected] =
-    useState(null)
-
-  const [revealed, setRevealed] =
-    useState(false)
-
-  const [score, setScore] =
-    useState(0)
-
-  const [loading, setLoading] =
-    useState(true)
-
+  const mock = searchParams.get('mock') === '1'
+  const [questions, setQuestions] = useState([])
+  const [index, setIndex] = useState(0)
+  const [selected, setSelected] = useState(null)
+  const [answers, setAnswers] = useState({})
+  const [loading, setLoading] = useState(true)
+  const [finished, setFinished] = useState(false)
+  const [timeLeft, setTimeLeft] = useState(mock ? 30 * 60 : 0)
 
   useEffect(() => {
+    loadQuestions(slug, topicId, topicSlug, mock ? 30 : 10)
+      .then((items) => setQuestions(items || []))
+      .finally(() => setLoading(false))
+  }, [slug, topicId, topicSlug, mock])
 
-    loadQuestions(
-      slug,
-      topicId,
-      topicSlug
-    )
-      .then(setQuestions)
-      .finally(() =>
-        setLoading(false)
-      )
-
-  }, [slug, topicId, topicSlug])
-
-
-  if (loading) {
-    return <Loading />
-  }
-
-
-  if (!questions.length) {
-
-    return (
-      <section className="practice-page">
-
-        <div className="result-panel">
-
-          <div className="eyebrow">
-            QUESTION BANK
-          </div>
-
-          <h1>
-            No questions yet
-          </h1>
-
-          <p>
-            Published questions for this topic or its subtopics have not been added yet.
-          </p>
-
-          <Link
-            className="primary-btn"
-            to={`/subjects/${slug}`}
-          >
-            Back to subject
-            <ArrowRight size={18} />
-          </Link>
-
-        </div>
-
-      </section>
-    )
-  }
-
-
-  const finished =
-    index >= questions.length
-
-
-  if (finished) {
-
-    return (
-      <section className="practice-page">
-
-        <div className="result-panel">
-
-          <div className="result-icon">
-            <Trophy size={34} />
-          </div>
-
-          <div className="eyebrow">
-            SESSION COMPLETE
-          </div>
-
-          <h1>
-            {score} / {questions.length}
-          </h1>
-
-          <p>
-            Nice work.
-          </p>
-
-          <Link
-            className="primary-btn"
-            to={`/subjects/${slug}`}
-          >
-            Back to subject
-            <ArrowRight size={18} />
-          </Link>
-
-        </div>
-
-      </section>
-    )
-  }
-
-
-  const q =
-    questions[index]
-
-
-  const options = [
-    q.option_a,
-    q.option_b,
-    q.option_c,
-    q.option_d
-  ]
-
-
-  const answer =
-    Number(q.correct_option)
-
-
-  const submit = () => {
-
-    if (selected == null) {
+  useEffect(() => {
+    if (!mock || loading || finished || !questions.length) return
+    if (timeLeft <= 0) {
+      setFinished(true)
       return
     }
+    const timer = setInterval(() => {
+      setTimeLeft((t) => Math.max(0, t - 1))
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [mock, loading, finished, questions.length, timeLeft])
 
-    setRevealed(true)
-
-    if (
-      Number(selected) ===
-      answer
-    ) {
-      setScore(
-        (currentScore) =>
-          currentScore + 1
-      )
-    }
+  const formatTime = (seconds) => {
+    const m = Math.floor(seconds / 60).toString().padStart(2, '0')
+    const s = (seconds % 60).toString().padStart(2, '0')
+    return `${m}:${s}`
   }
 
+  const submitMock = () => setFinished(true)
 
+  if (loading) return <Loading />
+
+  if (!questions.length) {
+    return <section className="practice-page"><div className="result-panel"><div className="eyebrow">QUESTION BANK</div><h1>No questions yet</h1><p>Published questions for this subject or topic have not been added yet.</p><Link className="primary-btn" to={`/subjects/${slug}`}>Back to subject <ArrowRight size={18} /></Link></div></section>
+  }
+
+  if (finished || index >= questions.length) {
+    const attempted = Object.keys(answers).length
+    const correct = Object.values(answers).filter((a) => a.correct).length
+    const wrong = Object.values(answers).filter((a) => !a.correct).length
+    const score = mock ? correct - wrong * 0.25 : correct
+    return <section className="practice-page"><div className="result-panel"><div className="result-icon"><Trophy size={34} /></div><div className="eyebrow">{mock ? 'MOCK TEST COMPLETE' : 'SESSION COMPLETE'}</div><h1>{score.toFixed(2)} / {questions.length}</h1><p>Attempted: {attempted} · Correct: {correct} · Wrong: {wrong}</p>{mock && <p>Negative marking: −0.25 for each wrong answer.</p>}<div className="question-footer"><button className="primary-btn" onClick={() => window.location.hash = `/practice/${slug}${mock ? '?mock=1' : ''}`}>Retake test <ArrowRight size={18} /></button><Link className="secondary-btn" to={`/subjects/${slug}`}>Back to subject</Link></div></div></section>
+  }
+
+  const q = questions[index]
+  const options = [q.option_a, q.option_b, q.option_c, q.option_d]
+  const answer = Number(q.correct_option)
+  const selectedAnswer = answers[q.id]?.selected ?? selected
+  const choose = (number) => setSelected(number)
   const next = () => {
-
+    if (selected != null) {
+      setAnswers((old) => ({ ...old, [q.id]: { selected, correct: Number(selected) === answer } }))
+    }
     setSelected(null)
-    setRevealed(false)
-
-    setIndex(
-      (currentIndex) =>
-        currentIndex + 1
-    )
+    setIndex((i) => i + 1)
   }
 
-
-  return (
-    <section className="practice-page">
-
-      <div className="practice-top">
-
-        <Link
-          to={`/subjects/${slug}`}
-        >
-          ← Exit practice
-        </Link>
-
-        <div>
-          <Clock3 size={16} />
-          Untimed practice
-        </div>
-
-      </div>
-
-
-      <div className="question-shell">
-
-        <div className="question-meta">
-
-          <span>
-            Question {index + 1} of{' '}
-            {questions.length}
-          </span>
-
-          <span>
-            {score} correct
-          </span>
-
-        </div>
-
-
-        <div className="question-progress">
-
-          <span
-            style={{
-              width: `${
-                (index /
-                  questions.length) *
-                100
-              }%`
-            }}
-          />
-
-        </div>
-
-
-        <h1>
-          {q.question_text}
-        </h1>
-
-
-        <div className="options">
-
-          {options.map(
-            (option, optionIndex) => {
-
-              const number =
-                optionIndex + 1
-
-
-              const className =
-                revealed
-                  ? number === answer
-                    ? 'correct'
-                    : number ===
-                        Number(selected)
-                      ? 'wrong'
-                      : ''
-                  : Number(selected) ===
-                      number
-                    ? 'selected'
-                    : ''
-
-
-              return (
-                <button
-                  key={number}
-                  disabled={revealed}
-                  onClick={() =>
-                    setSelected(number)
-                  }
-                  className={`option ${className}`}
-                >
-
-                  <span>
-                    {String.fromCharCode(
-                      64 + number
-                    )}
-                  </span>
-
-                  <b>
-                    {option}
-                  </b>
-
-                  {revealed &&
-                    number ===
-                      answer && (
-                      <CheckCircle2
-                        size={20}
-                      />
-                    )}
-
-                </button>
-              )
-            }
-          )}
-
-        </div>
-
-
-        {revealed && (
-          <div className="explanation">
-
-            <div className="eyebrow">
-              EXPLANATION
-            </div>
-
-            <p>
-              {q.explanation ||
-                'Explanation will appear here.'}
-            </p>
-
-          </div>
-        )}
-
-
-        <div className="question-footer">
-
-          {!revealed ? (
-
-            <button
-              className="primary-btn"
-              onClick={submit}
-              disabled={
-                selected == null
-              }
-            >
-              Check answer
-              <ArrowRight size={18} />
-            </button>
-
-          ) : (
-
-            <button
-              className="primary-btn"
-              onClick={next}
-            >
-              Next question
-              <ArrowRight size={18} />
-            </button>
-
-          )}
-
-        </div>
-
-      </div>
-
-    </section>
-  )
+  return <section className="practice-page"><div className="practice-top"><Link to={`/subjects/${slug}`}>← Exit</Link><div>{mock ? `Mock Test · ${formatTime(timeLeft)}` : 'Untimed practice'}</div></div><div className="question-shell"><div className="question-meta"><span>Question {index + 1} of {questions.length}</span><span>{mock ? '−0.25 negative marking' : 'Practice mode'}</span></div><div className="question-progress"><span style={{ width: `${(index / questions.length) * 100}%` }} /></div><h1>{q.question_text}</h1><div className="options">{options.map((option, optionIndex) => { const number = optionIndex + 1; return <button key={number} onClick={() => choose(number)} className={`option ${Number(selectedAnswer) === number ? 'selected' : ''}`}><span>{String.fromCharCode(64 + number)}</span><b>{option}</b></button> })}</div><div className="question-footer">{index < questions.length - 1 ? <button className="primary-btn" onClick={next} disabled={selected == null}>Next question <ArrowRight size={18} /></button> : <button className="primary-btn" onClick={() => { if (selected != null) setAnswers((old) => ({ ...old, [q.id]: { selected, correct: Number(selected) === answer } })); submitMock() }}>Submit test <CheckCircle2 size={18} /></button>}</div></div></section>
 }
-
 
 /* =========================================================
    LOAD QUESTIONS
@@ -1582,7 +1315,7 @@ function getTopicIdsForPractice(topics, rootTopicId) {
   return Array.from(wanted)
 }
 
-async function loadQuestions(slug, topicId = null, topicSlug = null) {
+async function loadQuestions(slug, topicId = null, topicSlug = null, questionLimit = 10) {
   if (!supabaseConfigured || !supabase) {
     return demoQuestions
   }
@@ -1640,7 +1373,7 @@ async function loadQuestions(slug, topicId = null, topicSlug = null) {
     .eq('is_published', true)
     .eq('subject', subject.name)
     .order('id', { ascending: true })
-    .limit(10)
+    .limit(questionLimit)
 
   if (selectedTopicId) {
     const {
