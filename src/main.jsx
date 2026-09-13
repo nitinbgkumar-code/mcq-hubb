@@ -203,29 +203,39 @@ function Shell() {
       {open && <MobileMenu onClose={() => setOpen(false)} />}
 
       <main>
-        <Routes>
-          <Route path="/" element={<Home />} />
+      <Routes>
+        <Route path="/" element={<Home />} />
 
-          <Route
+        <Route
+            path="/exams"
+            element={<ExamSelection />}
+        />
+
+        <Route
+          path="/exams/:examSlug"
+          element={<ExamSubjects />}
+        />
+
+        <Route
             path="/subjects"
             element={<Subjects />}
-          />
+        />
 
-          <Route
+        <Route
             path="/subjects/:slug"
             element={<SubjectDetail />}
-          />
+        />
 
-          <Route
-            path="/subjects/:slug/topic/:topicId"
-            element={<TopicDetail />}
-          />
+      <Route
+          path="/subjects/:slug/topic/:topicId"
+          element={<TopicDetail />}
+      />
 
-          <Route
+      <Route
             path="/practice/:slug"
             element={<Practice />}
-          />
-        </Routes>
+      />
+</Routes>
       </main>
 
       {!hideNav && <Footer />}
@@ -461,7 +471,7 @@ function Home() {
             {EXAMS.map((exam) => (
               <Link
                 key={exam.key}
-                to="/subjects"
+                to="/exams"
                 className={`exam-card ${exam.accent}`}
               >
 
@@ -697,6 +707,9 @@ function Subjects() {
     </section>
   )
 }
+
+
+
 
 
 /* =========================================================
@@ -1766,6 +1779,232 @@ function Footer() {
 }
 
 
+
+/* =========================================================
+   EXAM SELECTION PAGE
+   ========================================================= */
+
+function ExamSelection() {
+  const exams = [
+    {
+      id: 'upsc-civil-services',
+      name: 'UPSC Civil Services',
+      description: 'General Studies, CSAT, History, Polity, Economy and more.'
+    },
+    {
+      id: 'clat',
+      name: 'CLAT',
+      description: 'English, Legal Reasoning, Current Affairs, GK and Logical Reasoning.'
+    },
+    {
+      id: 'ailet',
+      name: 'AILET',
+      description: 'English, Current Affairs, Legal Aptitude and Logical Reasoning.'
+    },
+    {
+      id: 'neet-ug',
+      name: 'NEET UG',
+      description: 'Physics, Chemistry, Botany and Zoology.'
+    },
+    {
+      id: 'neet-pg',
+      name: 'NEET PG',
+      description: 'Medical subjects and postgraduate entrance preparation.'
+    },
+    {
+      id: 'ca-foundation',
+      name: 'CA Foundation',
+      description: 'Accounting, Business Laws, Economics and Quantitative Aptitude.'
+    },
+    {
+      id: 'ca-intermediate',
+      name: 'CA Intermediate',
+      description: 'Advanced Accounting, Law, Taxation, Costing and Auditing.'
+    },
+    {
+      id: 'ca-final',
+      name: 'CA Final',
+      description: 'Advanced professional-level CA preparation.'
+    }
+  ]
+
+  return (
+    <section className="section page">
+      <div className="container">
+        <SectionHeading
+          eyebrow="CHOOSE YOUR EXAM"
+          title="Select an exam"
+          copy="Choose an exam to see only the subjects connected to that examination."
+        />
+
+        <div className="subject-grid">
+          {exams.map((exam, index) => (
+            <Link
+              key={exam.id}
+              to={`/exams/${exam.id}`}
+              className="subject-card"
+            >
+              <div className="subject-number">
+                {String(index + 1).padStart(2, '0')}
+              </div>
+
+              <div>
+                <h3>{exam.name}</h3>
+                <p>{exam.description}</p>
+              </div>
+
+              <ArrowRight size={18} />
+            </Link>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+
+/* =========================================================
+   EXAM-WISE SUBJECTS PAGE
+   ========================================================= */
+
+function ExamSubjects() {
+  const { examSlug } = useParams()
+
+  const [exam, setExam] = useState(null)
+  const [subjects, setSubjects] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [errorMessage, setErrorMessage] = useState('')
+
+  useEffect(() => {
+    async function fetchExamSubjects() {
+      setLoading(true)
+      setErrorMessage('')
+
+      if (!supabaseConfigured || !supabase) {
+        setErrorMessage('Supabase is not connected.')
+        setLoading(false)
+        return
+      }
+
+      const {
+        data,
+        error
+      } = await supabase
+        .from('exams')
+        .select(`
+          id,
+          name,
+          slug,
+          description,
+          exam_subjects (
+            id,
+            display_order,
+            subject_id,
+            subjects (
+              id,
+              name,
+              slug,
+              description
+            )
+          )
+        `)
+        .eq('slug', examSlug)
+        .eq('is_active', true)
+        .eq('exam_subjects.is_active', true)
+        .single()
+
+      if (error) {
+        console.error('Exam subjects error:', error)
+        setErrorMessage('Unable to load this exam.')
+        setLoading(false)
+        return
+      }
+
+      setExam(data)
+
+      const linkedSubjects = (data.exam_subjects || [])
+        .filter((item) => item.subjects)
+        .sort(
+          (a, b) =>
+            (a.display_order || 0) -
+            (b.display_order || 0)
+        )
+        .map((item) => item.subjects)
+
+      setSubjects(linkedSubjects)
+      setLoading(false)
+    }
+
+    fetchExamSubjects()
+  }, [examSlug])
+
+  if (loading) {
+    return <Loading />
+  }
+
+  if (errorMessage) {
+    return (
+      <section className="section page">
+        <div className="container">
+          <div className="demo-note">
+            {errorMessage}
+          </div>
+        </div>
+      </section>
+    )
+  }
+
+  return (
+    <section className="section page">
+      <div className="container">
+        <Link
+          to="/exams"
+          className="secondary-link"
+        >
+          ← Change Exam
+        </Link>
+
+        <SectionHeading
+          eyebrow="EXAM SUBJECTS"
+          title={exam?.name || 'Subjects'}
+          copy={
+            exam?.description ||
+            'Choose a subject to explore its topics.'
+          }
+        />
+
+        {subjects.length === 0 ? (
+          <div className="demo-note">
+            No subjects have been linked to this exam yet.
+          </div>
+        ) : (
+          <div className="subject-grid">
+            {subjects.map((subject, index) => (
+              <Link
+                key={subject.id}
+                to={`/subjects/${subject.slug}`}
+                className="subject-card"
+              >
+                <div className="subject-number">
+                  {String(index + 1).padStart(2, '0')}
+                </div>
+
+                <div>
+                  <h3>{subject.name}</h3>
+                  <p>
+                    Open subject topics and question bank
+                  </p>
+                </div>
+
+                <ArrowRight size={18} />
+              </Link>
+            ))}
+          </div>
+        )}
+      </div>
+    </section>
+  )
+}
 /* =========================================================
    MOUNT APP
    ========================================================= */
