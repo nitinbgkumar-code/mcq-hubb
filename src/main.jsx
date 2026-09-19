@@ -1315,7 +1315,7 @@ function getTopicIdsForPractice(topics, rootTopicId) {
   return Array.from(wanted)
 }
 
-async function loadQuestions(slug, topicId = null, topicSlug = null, questionLimit = 10) {
+async function loadQuestions(slug, topicId = null, topicSlug = null, questionLimit = 1000) {
   if (!supabaseConfigured || !supabase) {
     return demoQuestions
   }
