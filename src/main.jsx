@@ -1235,7 +1235,7 @@ function Practice() {
   const [timeLeft, setTimeLeft] = useState(mock ? 30 * 60 : 0)
   
   useEffect(() => {
-    loadQuestions(slug, topicId, topicSlug, mock ? 30 : 1000)
+    loadQuestions(slug, topicId, topicSlug, 1000)
       .then((items) => {
         const loaded = items || []
         setAllQuestions(loaded)
