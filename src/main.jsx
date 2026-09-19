@@ -1407,7 +1407,7 @@ async function loadQuestions(slug, topicId = null, topicSlug = null, questionLim
     console.error('Question error:', error)
     return []
   }
-
+console.log('QUESTIONS LOADED:', data?.length)
   return data || []
 }
 
