@@ -1222,17 +1222,30 @@ function Practice() {
   const topicId = searchParams.get('topicId')
   const topicSlug = searchParams.get('topic')
   const mock = searchParams.get('mock') === '1'
+  const [allQuestions, setAllQuestions] = useState([])
   const [questions, setQuestions] = useState([])
   const [index, setIndex] = useState(0)
   const [selected, setSelected] = useState(null)
   const [answers, setAnswers] = useState({})
   const [loading, setLoading] = useState(true)
   const [finished, setFinished] = useState(false)
+  const [setupComplete, setSetupComplete] = useState(false)
+  const [shuffle, setShuffle] = useState(true)
+  const [questionCount, setQuestionCount] = useState('10')
   const [timeLeft, setTimeLeft] = useState(mock ? 30 * 60 : 0)
-
+  
   useEffect(() => {
     loadQuestions(slug, topicId, topicSlug, mock ? 30 : 1000)
-      .then((items) => setQuestions(items || []))
+      .then((items) => {
+        const loaded = items || []
+        setAllQuestions(loaded)
+
+        if (loaded.length >= 10) {
+          setQuestionCount('10')
+        } else {
+          setQuestionCount('all')
+        }
+      })
       .finally(() => setLoading(false))
   }, [slug, topicId, topicSlug, mock])
 
@@ -1254,20 +1267,172 @@ function Practice() {
     return `${m}:${s}`
   }
 
+  const startTest = () => {
+    let selectedQuestions = [...allQuestions]
+
+    if (shuffle) {
+      for (let i = selectedQuestions.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1))
+        ;[selectedQuestions[i], selectedQuestions[j]] = [
+          selectedQuestions[j],
+          selectedQuestions[i]
+        ]
+      }
+    }
+
+    if (questionCount !== 'all') {
+      selectedQuestions = selectedQuestions.slice(
+        0,
+        Number(questionCount)
+      )
+    }
+
+    setQuestions(selectedQuestions)
+    setIndex(0)
+    setSelected(null)
+    setAnswers({})
+    setFinished(false)
+    setSetupComplete(true)
+    setTimeLeft(mock ? 30 * 60 : 0)
+  }
+
+  
   const submitMock = () => setFinished(true)
 
   if (loading) return <Loading />
 
-  if (!questions.length) {
+  if (!allQuestions.length) {
     return <section className="practice-page"><div className="result-panel"><div className="eyebrow">QUESTION BANK</div><h1>No questions yet</h1><p>Published questions for this subject or topic have not been added yet.</p><Link className="primary-btn" to={`/subjects/${slug}`}>Back to subject <ArrowRight size={18} /></Link></div></section>
   }
 
+  if (!setupComplete) {
+    const countOptions = []
+
+    for (
+      let count = 10;
+      count <= Math.floor(allQuestions.length / 10) * 10;
+      count += 10
+    ) {
+      countOptions.push(count)
+    }
+
+    return (
+      <section className="practice-page">
+        <div className="result-panel">
+          <div className="eyebrow">TEST SETUP</div>
+
+          <h1>Set up your test</h1>
+
+          <p>
+            {allQuestions.length} question
+            {allQuestions.length === 1 ? '' : 's'} available.
+          </p>
+
+          <div style={{ marginTop: '2rem', textAlign: 'left' }}>
+            <h3>Number of questions</h3>
+
+            <div
+              style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: '0.6rem',
+                marginTop: '0.8rem'
+              }}
+            >
+              {countOptions.map((count) => (
+                <button
+                  key={count}
+                  type="button"
+                  className={questionCount === String(count) ? 'primary-btn' : 'outline-btn'}
+                  onClick={() => setQuestionCount(String(count))}
+                >
+                  {count}
+                </button>
+              ))}
+
+              <button
+                type="button"
+                className={questionCount === 'all' ? 'primary-btn' : 'outline-btn'}
+                onClick={() => setQuestionCount('all')}
+              >
+                All ({allQuestions.length})
+              </button>
+            </div>
+          </div>
+
+          <div style={{ marginTop: '2rem', textAlign: 'left' }}>
+            <h3>Question order</h3>
+
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.7rem',
+                marginTop: '0.8rem'
+              }}
+            >
+              <label>
+                <input
+                  type="radio"
+                  name="shuffle"
+                  checked={shuffle}
+                  onChange={() => setShuffle(true)}
+                />{' '}
+                Shuffle questions
+              </label>
+
+              <label>
+                <input
+                  type="radio"
+                  name="shuffle"
+                  checked={!shuffle}
+                  onChange={() => setShuffle(false)}
+                />{' '}
+                Keep original order
+              </label>
+            </div>
+          </div>
+
+          <div className="question-footer" style={{ marginTop: '2rem' }}>
+            <button
+              className="primary-btn"
+              onClick={startTest}
+            >
+              Start Test <ArrowRight size={18} />
+            </button>
+
+            <Link
+              className="secondary-btn"
+              to={`/subjects/${slug}`}
+            >
+              Back to subject
+            </Link>
+          </div>
+        </div>
+      </section>
+    )
+  }
+      
   if (finished || index >= questions.length) {
     const attempted = Object.keys(answers).length
     const correct = Object.values(answers).filter((a) => a.correct).length
     const wrong = Object.values(answers).filter((a) => !a.correct).length
     const score = mock ? correct - wrong * 0.25 : correct
-    return <section className="practice-page"><div className="result-panel"><div className="result-icon"><Trophy size={34} /></div><div className="eyebrow">{mock ? 'MOCK TEST COMPLETE' : 'SESSION COMPLETE'}</div><h1>{score.toFixed(2)} / {questions.length}</h1><p>Attempted: {attempted} · Correct: {correct} · Wrong: {wrong}</p>{mock && <p>Negative marking: −0.25 for each wrong answer.</p>}<div className="question-footer"><button className="primary-btn" onClick={() => window.location.hash = `/practice/${slug}${mock ? '?mock=1' : ''}`}>Retake test <ArrowRight size={18} /></button><Link className="secondary-btn" to={`/subjects/${slug}`}>Back to subject</Link></div></div></section>
+    return <section className="practice-page"><div className="result-panel"><div className="result-icon"><Trophy size={34} /></div><div className="eyebrow">{mock ? 'MOCK TEST COMPLETE' : 'SESSION COMPLETE'}</div><h1>{score.toFixed(2)} / {questions.length}</h1><p>Attempted: {attempted} · Correct: {correct} · Wrong: {wrong}</p>{mock && <p>Negative marking: −0.25 for each wrong answer.</p>}<div className="question-footer"><button
+  className="primary-btn"
+  onClick={() => {
+    setQuestions([])
+    setIndex(0)
+    setSelected(null)
+    setAnswers({})
+    setFinished(false)
+    setSetupComplete(false)
+    setShuffle(true)
+    setQuestionCount(allQuestions.length >= 10 ? '10' : 'all')
+  }}
+>
+  Retake test <ArrowRight size={18} />
+</button><Link className="secondary-btn" to={`/subjects/${slug}`}>Back to subject</Link></div></div></section>
   }
 
   const q = questions[index]
