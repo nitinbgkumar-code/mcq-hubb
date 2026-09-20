@@ -1448,7 +1448,15 @@ function Practice() {
   }}
 >
   Retake test <ArrowRight size={18} />
-</button><Link className="secondary-btn" to={`/subjects/${slug}`}>Back to subject</Link></div></div></section>
+</button>
+     <button
+  className="primary-btn"
+  onClick={() => window.location.hash = `/subjects/${slug}`}
+>
+  Back to subject <ArrowRight size={18} />
+</button>
+    
+    </div></div></section>
   }
 
   const q = questions[index]
