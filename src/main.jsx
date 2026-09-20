@@ -1416,12 +1416,12 @@ function Practice() {
               Start Test <ArrowRight size={18} />
             </button>
 
-            <Link
-              className="secondary-btn"
-              to={`/subjects/${slug}`}
+             <button
+              className="primary-btn"
+              onClick={() => window.location.hash = `/subjects/${slug}`}
             >
-              Back to subject
-            </Link>
+              Back to subject <ArrowRight size={18} />
+            </button>
           </div>
         </div>
       </section>
