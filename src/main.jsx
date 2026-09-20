@@ -1232,6 +1232,7 @@ function Practice() {
   const [setupComplete, setSetupComplete] = useState(false)
   const [shuffle, setShuffle] = useState(true)
   const [questionCount, setQuestionCount] = useState('10')
+  const [optionOrders, setOptionOrders] = useState({})
   const [timeLeft, setTimeLeft] = useState(mock ? 30 * 60 : 0)
   
   useEffect(() => {
@@ -1287,6 +1288,20 @@ function Practice() {
       )
     }
 
+    const newOptionOrders = {}
+
+    selectedQuestions.forEach((question) => {
+      const order = [1, 2, 3, 4]
+
+      for (let i = order.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1))
+        ;[order[i], order[j]] = [order[j], order[i]]
+      }
+
+      newOptionOrders[question.id] = order
+    })
+
+    setOptionOrders(newOptionOrders)
     setQuestions(selectedQuestions)
     setIndex(0)
     setSelected(null)
@@ -1425,6 +1440,7 @@ function Practice() {
     setIndex(0)
     setSelected(null)
     setAnswers({})
+    setOptionOrders({})
     setFinished(false)
     setSetupComplete(false)
     setShuffle(true)
@@ -1436,10 +1452,19 @@ function Practice() {
   }
 
   const q = questions[index]
-  const options = [q.option_a, q.option_b, q.option_c, q.option_d]
+
+  const optionTexts = {
+    1: q.option_a,
+    2: q.option_b,
+    3: q.option_c,
+    4: q.option_d
+  }
+
+  const optionOrder = optionOrders[q.id] || [1, 2, 3, 4]
+
   const answer = Number(q.correct_option)
   const selectedAnswer = answers[q.id]?.selected ?? selected
-  const choose = (number) => setSelected(number)
+  const choose = (originalOptionNumber) => setSelected(originalOptionNumber)
   const next = () => {
     if (selected != null) {
       setAnswers((old) => ({ ...old, [q.id]: { selected, correct: Number(selected) === answer } }))
@@ -1448,7 +1473,25 @@ function Practice() {
     setIndex((i) => i + 1)
   }
 
-  return <section className="practice-page"><div className="practice-top"><Link to={`/subjects/${slug}`}>← Exit</Link><div>{mock ? `Mock Test · ${formatTime(timeLeft)}` : 'Untimed practice'}</div></div><div className="question-shell"><div className="question-meta"><span>Question {index + 1} of {questions.length}</span><span>{mock ? '−0.25 negative marking' : 'Practice mode'}</span></div><div className="question-progress"><span style={{ width: `${(index / questions.length) * 100}%` }} /></div><h1>{q.question_text}</h1><div className="options">{options.map((option, optionIndex) => { const number = optionIndex + 1; return <button key={number} onClick={() => choose(number)} className={`option ${Number(selectedAnswer) === number ? 'selected' : ''}`}><span>{String.fromCharCode(64 + number)}</span><b>{option}</b></button> })}</div><div className="question-footer">{index < questions.length - 1 ? <button className="primary-btn" onClick={next} disabled={selected == null}>Next question <ArrowRight size={18} /></button> : <button className="primary-btn" onClick={() => { if (selected != null) setAnswers((old) => ({ ...old, [q.id]: { selected, correct: Number(selected) === answer } })); submitMock() }}>Submit test <CheckCircle2 size={18} /></button>}</div></div></section>
+  return <section className="practice-page"><div className="practice-top"><Link to={`/subjects/${slug}`}>← Exit</Link><div>{mock ? `Mock Test · ${formatTime(timeLeft)}` : 'Untimed practice'}</div></div><div className="question-shell"><div className="question-meta"><span>Question {index + 1} of {questions.length}</span><span>{mock ? '−0.25 negative marking' : 'Practice mode'}</span></div><div className="question-progress"><span style={{ width: `${(index / questions.length) * 100}%` }} /></div><h1>{q.question_text}</h1><div className="options">
+  {optionOrder.map((originalOptionNumber, displayIndex) => {
+    const option = optionTexts[originalOptionNumber]
+    const displayLetter = String.fromCharCode(65 + displayIndex)
+
+    return (
+      <button
+        key={originalOptionNumber}
+        onClick={() => choose(originalOptionNumber)}
+        className={`option ${
+          Number(selectedAnswer) === originalOptionNumber ? 'selected' : ''
+        }`}
+      >
+        <span>{displayLetter}</span>
+        <b>{option}</b>
+      </button>
+    )
+  })}
+</div><div className="question-footer">{index < questions.length - 1 ? <button className="primary-btn" onClick={next} disabled={selected == null}>Next question <ArrowRight size={18} /></button> : <button className="primary-btn" onClick={() => { if (selected != null) setAnswers((old) => ({ ...old, [q.id]: { selected, correct: Number(selected) === answer } })); submitMock() }}>Submit test <CheckCircle2 size={18} /></button>}</div></div></section>
 }
 
 /* =========================================================
