@@ -1456,6 +1456,20 @@ function TestSetup() {
             </div>
           )}
 
+          {topicId && (
+            <button
+              className="outline-btn full"
+              onClick={() =>
+                navigate(
+                  `/question-bank/${slug}?topicId=${encodeURIComponent(topicId)}`
+                )
+              }
+            >
+              <ListChecks size={18} />
+              View Question Bank
+            </button>
+          )}
+
           <button className="primary-btn full" onClick={start}>
             Start Test
             <ArrowRight size={18} />
