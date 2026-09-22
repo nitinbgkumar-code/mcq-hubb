@@ -15,15 +15,18 @@ import {
   ArrowRight,
   BookOpen,
   CheckCircle2,
+  CheckSquare,
   Clock3,
   Flame,
   LayoutDashboard,
+  ListChecks,
   Menu,
   Search,
   ShieldCheck,
   Sparkles,
   Target,
   Trophy,
+  Trash2,
   X,
   ChevronRight,
   ChevronLeft
@@ -203,39 +206,44 @@ function Shell() {
       {open && <MobileMenu onClose={() => setOpen(false)} />}
 
       <main>
-      <Routes>
-        <Route path="/" element={<Home />} />
+        <Routes>
+          <Route path="/" element={<Home />} />
 
-        <Route
-            path="/exams"
-            element={<ExamSelection />}
-        />
-
-        <Route
-          path="/exams/:examSlug"
-          element={<ExamSubjects />}
-        />
-
-        <Route
+          <Route
             path="/subjects"
             element={<Subjects />}
-        />
+          />
 
-        <Route
+          <Route
             path="/subjects/:slug"
             element={<SubjectDetail />}
-        />
+          />
 
-      <Route
-          path="/subjects/:slug/topic/:topicId"
-          element={<TopicDetail />}
-      />
+          <Route
+            path="/subjects/:slug/topic/:topicId"
+            element={<TopicDetail />}
+          />
 
-      <Route
+          <Route
+            path="/question-bank/:slug"
+            element={<QuestionBank />}
+          />
+
+          <Route
+            path="/test-setup/:slug"
+            element={<TestSetup />}
+          />
+
+          <Route
             path="/practice/:slug"
             element={<Practice />}
-      />
-</Routes>
+          />
+
+          <Route
+            path="/mock-test/:testId"
+            element={<SavedMockTest />}
+          />
+        </Routes>
       </main>
 
       {!hideNav && <Footer />}
@@ -471,7 +479,7 @@ function Home() {
             {EXAMS.map((exam) => (
               <Link
                 key={exam.key}
-                to="/exams"
+                to="/subjects"
                 className={`exam-card ${exam.accent}`}
               >
 
@@ -709,9 +717,6 @@ function Subjects() {
 }
 
 
-
-
-
 /* =========================================================
    LOAD SUBJECTS
    ========================================================= */
@@ -775,9 +780,7 @@ function SubjectDetail() {
       .finally(() => setLoading(false))
   }, [slug])
 
-  if (loading) {
-    return <Loading />
-  }
+  if (loading) return <Loading />
 
   if (!subject) {
     return (
@@ -793,6 +796,10 @@ function SubjectDetail() {
     .filter((topic) => topic.parent_id === null)
     .sort((a, b) => (a.display_order || 0) - (b.display_order || 0))
 
+  const startSubjectTest = () => {
+    navigate(`/test-setup/${subject.slug}`)
+  }
+
   return (
     <section className="section page">
       <div className="container">
@@ -803,79 +810,67 @@ function SubjectDetail() {
         <SectionHeading
           eyebrow="SUBJECT"
           title={subject.name}
-          copy="Select a section to explore its topics and subtopics."
+          copy="Choose a topic, open its question bank, or start a test from the complete subject."
         />
 
-        <div className="topic-layout">
-          <div className="topic-list">
-            {roots.map((topic) => {
-              const hasChildren = topics.some(
-                (child) => String(child.parent_id) === String(topic.id)
-              )
-              const directQuestionCount = Number(questionCounts[String(topic.id)] || 0)
+        <div className="callout" style={{ marginBottom: '1.25rem' }}>
+          <div>
+            <div className="eyebrow">SUBJECT PRACTICE</div>
+            <h2>Practice {subject.name}</h2>
+            <p>Choose the number of questions and whether to shuffle their order.</p>
+          </div>
+          <button className="primary-btn" onClick={startSubjectTest}>
+            Start Test
+            <ArrowRight size={18} />
+          </button>
+        </div>
 
-              return (
-                <div className="topic-row" key={topic.id}>
-                  <div>
-                    <h3>{topic.name}</h3>
-                    <p>
-                      {hasChildren
-                        ? `${topics.filter((child) => String(child.parent_id) === String(topic.id)).length} subtopics`
-                        : directQuestionCount > 0
-                          ? `${directQuestionCount} questions`
-                          : 'Question Bank'}
-                    </p>
-                  </div>
+        <div className="topic-list">
+          {roots.map((topic) => {
+            const children = topics.filter(
+              (child) => String(child.parent_id) === String(topic.id)
+            )
+            const directQuestionCount = Number(questionCounts[String(topic.id)] || 0)
 
-                  <div className="topic-actions">
-                    {hasChildren && (
-                      <Link
-                        className="outline-btn"
-                        to={`/subjects/${subject.slug}/topic/${topic.id}`}
-                      >
-                        Open
-                        <ChevronRight size={17} />
-                      </Link>
-                    )}
-
-                    {directQuestionCount > 0 && (
-                      <Link
-                        className="outline-btn"
-                        to={`/practice/${subject.slug}?topicId=${encodeURIComponent(topic.id)}`}
-                      >
-                        Question Bank
-                        <ArrowRight size={16} />
-                      </Link>
-                    )}
-
-                    {!hasChildren && directQuestionCount === 0 && (
-                      <Link
-                        className="outline-btn"
-                        to={`/practice/${subject.slug}?topicId=${encodeURIComponent(topic.id)}`}
-                      >
-                        Question Bank
-                        <ArrowRight size={16} />
-                      </Link>
-                    )}
-                  </div>
+            return (
+              <div className="topic-row" key={topic.id}>
+                <div>
+                  <h3>{topic.name}</h3>
+                  <p>
+                    {children.length > 0
+                      ? `${children.length} subtopics`
+                      : `${directQuestionCount} questions`}
+                  </p>
                 </div>
-              )
-            })}
-          </div>
 
-          <div className="sidebar-card">
-            <div className="eyebrow">QUICK START</div>
-            <h3>Mixed practice</h3>
-            <p>Practice questions from the complete subject.</p>
-            <Link className="primary-btn full" to={`/practice/${subject.slug}`}>
-              Start MCQs
-            </Link>
-          </div>
+                <div className="topic-actions">
+                  {children.length > 0 && (
+                    <Link
+                      className="outline-btn"
+                      to={`/subjects/${subject.slug}/topic/${topic.id}`}
+                    >
+                      Open
+                      <ChevronRight size={17} />
+                    </Link>
+                  )}
+
+                  <Link
+                    className="outline-btn"
+                    to={`/question-bank/${subject.slug}?topicId=${encodeURIComponent(topic.id)}`}
+                  >
+                    View Question Bank
+                    <ListChecks size={16} />
+                  </Link>
+                </div>
+              </div>
+            )
+          })}
         </div>
       </div>
     </section>
   )
 }
+
 
 /* =========================================================
    TOPIC DETAIL PAGE
@@ -883,6 +878,7 @@ function SubjectDetail() {
 
 function TopicDetail() {
   const { slug, topicId } = useParams()
+  const navigate = useNavigate()
 
   const [subject, setSubject] = useState(null)
   const [topics, setTopics] = useState([])
@@ -899,16 +895,12 @@ function TopicDetail() {
       .finally(() => setLoading(false))
   }, [slug])
 
-  if (loading) {
-    return <Loading />
-  }
+  if (loading) return <Loading />
 
   if (!subject) {
     return (
       <section className="section page">
-        <div className="container">
-          <div className="demo-note">Subject not found.</div>
-        </div>
+        <div className="container"><div className="demo-note">Subject not found.</div></div>
       </section>
     )
   }
@@ -920,9 +912,7 @@ function TopicDetail() {
   if (!currentTopic) {
     return (
       <section className="section page">
-        <div className="container">
-          <div className="demo-note">Topic not found.</div>
-        </div>
+        <div className="container"><div className="demo-note">Topic not found.</div></div>
       </section>
     )
   }
@@ -931,129 +921,907 @@ function TopicDetail() {
     .filter((topic) => String(topic.parent_id) === String(currentTopic.id))
     .sort((a, b) => (a.display_order || 0) - (b.display_order || 0))
 
-  const hasChildren = children.length > 0
   const directQuestionCount = Number(questionCounts[String(currentTopic.id)] || 0)
 
   return (
     <section className="section page">
       <div className="container">
-        <button className="back-link" onClick={() => window.history.back()}>
+        <button className="back-link" onClick={() => navigate(-1)}>
           ← Back
         </button>
 
         <SectionHeading
           eyebrow="TOPIC"
           title={currentTopic.name}
-          copy={
-            hasChildren
-              ? 'Explore any number of nested levels. Practice this section to include questions from this topic and every level below it.'
-              : 'This is a final topic level. Open its question bank to practice.'
-          }
+          copy="Open a child topic, view this topic's question bank, or start a test using this section and its descendants."
         />
 
-        {directQuestionCount > 0 && (
-          <div className="callout" style={{ marginBottom: '1.25rem' }}>
-            <div>
-              <div className="eyebrow">QUESTION BANK</div>
-              <h2>{directQuestionCount} question{directQuestionCount === 1 ? '' : 's'} in {currentTopic.name}</h2>
-              <p>These questions are assigned directly to this topic.</p>
-            </div>
+        <div className="callout" style={{ marginBottom: '1.25rem' }}>
+          <div>
+            <div className="eyebrow">QUESTION BANK</div>
+            <h2>{directQuestionCount} direct question{directQuestionCount === 1 ? '' : 's'}</h2>
+            <p>View and manage every question assigned directly to this topic.</p>
+          </div>
+          <div className="topic-actions">
+            <Link
+              className="outline-btn"
+              to={`/question-bank/${subject.slug}?topicId=${encodeURIComponent(currentTopic.id)}`}
+            >
+              View Question Bank
+              <ListChecks size={17} />
+            </Link>
             <Link
               className="primary-btn"
-              to={`/practice/${subject.slug}?topicId=${encodeURIComponent(currentTopic.id)}`}
+              to={`/test-setup/${subject.slug}?topicId=${encodeURIComponent(currentTopic.id)}`}
             >
-              Open Question Bank
-              <ArrowRight size={18} />
+              Start Test
+              <ArrowRight size={17} />
             </Link>
           </div>
-        )}
+        </div>
 
-        {hasChildren ? (
-          <div className="topic-layout">
-            <div className="topic-list">
-              {children.map((child) => {
-                const childHasChildren = topics.some(
-                  (item) => String(item.parent_id) === String(child.id)
-                )
-                const childQuestionCount = Number(questionCounts[String(child.id)] || 0)
+        {children.length > 0 ? (
+          <div className="topic-list">
+            {children.map((child) => {
+              const childHasChildren = topics.some(
+                (item) => String(item.parent_id) === String(child.id)
+              )
+              const childQuestionCount = Number(questionCounts[String(child.id)] || 0)
 
-                return (
-                  <div className="topic-row" key={child.id}>
-                    <div>
-                      <h3>{child.name}</h3>
-                      <p>
-                        {childHasChildren
-                          ? `${topics.filter((item) => String(item.parent_id) === String(child.id)).length} subtopics`
-                          : childQuestionCount > 0
-                            ? `${childQuestionCount} questions`
-                            : 'Question Bank'}
-                      </p>
-                    </div>
-
-                    <div className="topic-actions">
-                      {childHasChildren && (
-                        <Link
-                          className="outline-btn"
-                          to={`/subjects/${subject.slug}/topic/${child.id}`}
-                        >
-                          Open
-                          <ChevronRight size={17} />
-                        </Link>
-                      )}
-
-                      {(childQuestionCount > 0 || !childHasChildren) && (
-                        <Link
-                          className="outline-btn"
-                          to={`/practice/${subject.slug}?topicId=${encodeURIComponent(child.id)}`}
-                        >
-                          Question Bank
-                          <ArrowRight size={16} />
-                        </Link>
-                      )}
-                    </div>
+              return (
+                <div className="topic-row" key={child.id}>
+                  <div>
+                    <h3>{child.name}</h3>
+                    <p>
+                      {childHasChildren
+                        ? `${topics.filter((item) => String(item.parent_id) === String(child.id)).length} subtopics`
+                        : `${childQuestionCount} questions`}
+                    </p>
                   </div>
-                )
-              })}
-            </div>
 
-            <div className="sidebar-card">
-              <div className="eyebrow">SECTION PRACTICE</div>
-              <h3>{currentTopic.name}</h3>
-              <p>
-                Practice direct questions plus questions from every descendant topic below this section.
-              </p>
-              <Link
-                className="primary-btn full"
-                to={`/practice/${subject.slug}?topicId=${encodeURIComponent(currentTopic.id)}`}
-              >
-                Practice This Section
-                <ArrowRight size={18} />
-              </Link>
-            </div>
+                  <div className="topic-actions">
+                    {childHasChildren && (
+                      <Link
+                        className="outline-btn"
+                        to={`/subjects/${subject.slug}/topic/${child.id}`}
+                      >
+                        Open
+                        <ChevronRight size={17} />
+                      </Link>
+                    )}
+                    <Link
+                      className="outline-btn"
+                      to={`/question-bank/${subject.slug}?topicId=${encodeURIComponent(child.id)}`}
+                    >
+                      View Question Bank
+                      <ListChecks size={16} />
+                    </Link>
+                  </div>
+                </div>
+              )
+            })}
           </div>
         ) : (
-          <div className="callout">
-            <div>
-              <div className="eyebrow">QUESTION BANK</div>
-              <h2>{currentTopic.name}</h2>
-              <p>
-                No further subtopics exist here. Questions assigned to this topic are available in its Question Bank.
-              </p>
-            </div>
-
-            <Link
-              className="primary-btn"
-              to={`/practice/${subject.slug}?topicId=${encodeURIComponent(currentTopic.id)}`}
-            >
-              Open Question Bank
-              <ArrowRight size={18} />
-            </Link>
+          <div className="demo-note">
+            This is a final topic. Use View Question Bank to manage its questions.
           </div>
         )}
       </div>
     </section>
   )
 }
+
+
+/* =========================================================
+   QUESTION BANK
+   ========================================================= */
+
+function QuestionBank() {
+  const { slug } = useParams()
+  const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
+  const topicId = searchParams.get('topicId')
+
+  const [subject, setSubject] = useState(null)
+  const [topic, setTopic] = useState(null)
+  const [questions, setQuestions] = useState([])
+  const [selectedIds, setSelectedIds] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [busy, setBusy] = useState(false)
+
+  const loadBank = async () => {
+    setLoading(true)
+
+    if (!supabaseConfigured || !supabase) {
+      setQuestions([])
+      setLoading(false)
+      return
+    }
+
+    const { data: subjectData, error: subjectError } = await supabase
+      .from('subjects')
+      .select('id,name,slug')
+      .eq('slug', slug)
+      .maybeSingle()
+
+    if (subjectError || !subjectData) {
+      console.error('Question bank subject error:', subjectError)
+      setLoading(false)
+      return
+    }
+
+    setSubject(subjectData)
+
+    const { data: topicData, error: topicError } = await supabase
+      .from('topics')
+      .select('id,name,slug,parent_id,subject_id')
+      .eq('id', topicId)
+      .eq('subject_id', subjectData.id)
+      .maybeSingle()
+
+    if (topicError || !topicData) {
+      console.error('Question bank topic error:', topicError)
+      setLoading(false)
+      return
+    }
+
+    setTopic(topicData)
+
+    const { data, error } = await supabase
+      .from('questions')
+      .select('id,subject,question_text,option_a,option_b,option_c,option_d,correct_option,explanation,is_published,topic_id')
+      .eq('topic_id', topicId)
+      .order('id', { ascending: true })
+
+    if (error) {
+      console.error('Question bank error:', error)
+      setQuestions([])
+    } else {
+      setQuestions(data || [])
+    }
+
+    setSelectedIds([])
+    setLoading(false)
+  }
+
+  useEffect(() => {
+    if (topicId) loadBank()
+  }, [slug, topicId])
+
+  const allSelected = questions.length > 0 && selectedIds.length === questions.length
+
+  const toggle = (id) => {
+    setSelectedIds((current) =>
+      current.includes(id)
+        ? current.filter((item) => item !== id)
+        : [...current, id]
+    )
+  }
+
+  const selectAll = () => {
+    setSelectedIds(questions.map((q) => q.id))
+  }
+
+  const deselectAll = () => setSelectedIds([])
+
+  const deleteIds = async (ids) => {
+    if (!ids.length || !supabaseConfigured || !supabase) return
+
+    const confirmed = window.confirm(
+      `Delete ${ids.length} question${ids.length === 1 ? '' : 's'} permanently? This action cannot be undone.`
+    )
+    if (!confirmed) return
+
+    setBusy(true)
+
+    const { data, error } = await supabase.rpc(
+      'delete_questions_permanently',
+      { p_question_ids: ids }
+    )
+
+    setBusy(false)
+
+    if (error) {
+      console.error('Delete questions error:', error)
+      alert(`Unable to delete questions: ${error.message}`)
+      return
+    }
+
+    const idSet = new Set(ids.map(Number))
+    setQuestions((current) => current.filter((q) => !idSet.has(Number(q.id))))
+    setSelectedIds([])
+    alert(`${Number(data || ids.length)} question${Number(data || ids.length) === 1 ? '' : 's'} deleted permanently.`)
+  }
+
+  const attemptSelected = () => {
+    if (!selectedIds.length) return
+    navigate(`/test-setup/${slug}?topicId=${encodeURIComponent(topicId)}&mode=selected`, {
+      state: { selectedQuestionIds: selectedIds }
+    })
+  }
+
+  const createMockTest = async () => {
+    if (!selectedIds.length || !subject || !topic || !supabaseConfigured || !supabase) return
+
+    const title = window.prompt(
+      'Enter a name for this mock test:',
+      `${topic.name} — Custom Mock Test`
+    )
+
+    if (!title) return
+
+    setBusy(true)
+
+    const { data, error } = await supabase.rpc('create_custom_test', {
+      p_title: title,
+      p_subject_id: subject.id,
+      p_topic_id: topic.id,
+      p_question_ids: selectedIds,
+      p_shuffle: false
+    })
+
+    setBusy(false)
+
+    if (error) {
+      console.error('Create mock test error:', error)
+      alert(`Unable to create mock test: ${error.message}`)
+      return
+    }
+
+    navigate(`/mock-test/${data}`)
+  }
+
+  if (!topicId) {
+    return (
+      <section className="section page">
+        <div className="container">
+          <div className="demo-note">No topic was selected.</div>
+        </div>
+      </section>
+    )
+  }
+
+  if (loading) return <Loading />
+
+  return (
+    <section className="section page">
+      <div className="container">
+        <button className="back-link" onClick={() => navigate(-1)}>
+          ← Back
+        </button>
+
+        <SectionHeading
+          eyebrow="QUESTION BANK"
+          title={topic?.name || 'Question Bank'}
+          copy="Select questions to attempt only those questions, create a saved mock test, or permanently delete selected questions."
+        />
+
+        <div className="question-bank-summary">
+          <div>
+            <strong>{questions.length}</strong>
+            <span>Total Questions</span>
+          </div>
+          <div>
+            <strong>{selectedIds.length}</strong>
+            <span>Selected</span>
+          </div>
+        </div>
+
+        <div className="question-bank-toolbar">
+          <button className="outline-btn" onClick={allSelected ? deselectAll : selectAll}>
+            <CheckSquare size={17} />
+            {allSelected ? 'Deselect All' : 'Select All'}
+          </button>
+
+          <button
+            className="outline-btn"
+            onClick={attemptSelected}
+            disabled={!selectedIds.length || busy}
+          >
+            Attempt Selected Questions
+            <ArrowRight size={17} />
+          </button>
+
+          <button
+            className="outline-btn"
+            onClick={createMockTest}
+            disabled={!selectedIds.length || busy}
+          >
+            Create Mock Test
+            <ListChecks size={17} />
+          </button>
+
+          <button
+            className="danger-btn"
+            onClick={() => deleteIds(selectedIds)}
+            disabled={!selectedIds.length || busy}
+          >
+            <Trash2 size={17} />
+            Delete Selected
+          </button>
+        </div>
+
+        {!questions.length ? (
+          <div className="demo-note">
+            No questions have been added to this topic yet.
+          </div>
+        ) : (
+          <div className="question-bank-list">
+            {questions.map((question, index) => (
+              <div className="question-bank-row" key={question.id}>
+                <div className="question-select">
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.includes(question.id)}
+                    onChange={() => toggle(question.id)}
+                  />
+                </div>
+
+                <div className="question-number">{index + 1}</div>
+
+                <div className="question-bank-content">
+                  <p className="question-bank-text">{question.question_text}</p>
+                  <div className="question-bank-meta">
+                    <span>ID: {question.id}</span>
+                    <span>{question.is_published ? 'Published' : 'Unpublished'}</span>
+                  </div>
+                </div>
+
+                <button
+                  className="icon-delete-btn"
+                  title="Delete permanently"
+                  onClick={() => deleteIds([question.id])}
+                  disabled={busy}
+                >
+                  <Trash2 size={18} />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </section>
+  )
+}
+
+
+/* =========================================================
+   TEST SETUP
+   ========================================================= */
+
+function TestSetup() {
+  const { slug } = useParams()
+  const [searchParams] = useSearchParams()
+  const location = useLocation()
+  const navigate = useNavigate()
+
+  const topicId = searchParams.get('topicId')
+  const mode = searchParams.get('mode') || 'topic'
+  const selectedQuestionIds = location.state?.selectedQuestionIds || []
+
+  const [subject, setSubject] = useState(null)
+  const [topic, setTopic] = useState(null)
+  const [availableCount, setAvailableCount] = useState(0)
+  const [numberOfQuestions, setNumberOfQuestions] = useState(10)
+  const [shuffle, setShuffle] = useState(true)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function loadSetup() {
+      setLoading(true)
+
+      if (!supabaseConfigured || !supabase) {
+        setAvailableCount(selectedQuestionIds.length || 3)
+        setNumberOfQuestions(Math.min(10, selectedQuestionIds.length || 3))
+        setLoading(false)
+        return
+      }
+
+      const { data: subjectData } = await supabase
+        .from('subjects')
+        .select('id,name,slug')
+        .eq('slug', slug)
+        .maybeSingle()
+
+      setSubject(subjectData)
+
+      let count = 0
+
+      if (mode === 'selected' && selectedQuestionIds.length) {
+        count = selectedQuestionIds.length
+      } else {
+        let topicIds = null
+
+        if (topicId) {
+          const { data: topics } = await supabase
+            .from('topics')
+            .select('id,parent_id')
+            .eq('subject_id', subjectData?.id)
+            .eq('is_active', true)
+
+          topicIds = getTopicIdsForPractice(topics || [], topicId)
+        }
+
+        let query = supabase
+          .from('questions')
+          .select('id', { count: 'exact', head: true })
+          .eq('is_published', true)
+          .eq('subject', subjectData?.name)
+
+        if (topicIds?.length) query = query.in('topic_id', topicIds)
+
+        const { count: questionCount, error } = await query
+        if (!error) count = Number(questionCount || 0)
+      }
+
+      if (topicId) {
+        const { data: topicData } = await supabase
+          .from('topics')
+          .select('id,name')
+          .eq('id', topicId)
+          .maybeSingle()
+        setTopic(topicData)
+      }
+
+      setAvailableCount(count)
+      setNumberOfQuestions(Math.min(10, count || 1))
+      setLoading(false)
+    }
+
+    loadSetup()
+  }, [slug, topicId, mode, selectedQuestionIds.join(',')])
+
+  const start = () => {
+    if (!availableCount || numberOfQuestions < 1) return
+
+    navigate(`/practice/${slug}`, {
+      state: {
+        mode,
+        topicId,
+        selectedQuestionIds,
+        numberOfQuestions,
+        shuffle,
+        subjectName: subject?.name,
+        topicName: topic?.name
+      }
+    })
+  }
+
+  if (loading) return <Loading />
+
+  if (!availableCount) {
+    return (
+      <section className="section page">
+        <div className="container">
+          <div className="result-panel">
+            <div className="eyebrow">TEST SETUP</div>
+            <h1>No questions available</h1>
+            <p>Add published questions to this topic before starting a test.</p>
+            <button className="primary-btn" onClick={() => navigate(-1)}>Back</button>
+          </div>
+        </div>
+      </section>
+    )
+  }
+
+  const choices = Array.from({ length: availableCount }, (_, i) => i + 1)
+
+  return (
+    <section className="section page">
+      <div className="container narrow-container">
+        <button className="back-link" onClick={() => navigate(-1)}>← Back</button>
+
+        <SectionHeading
+          eyebrow="TEST SETTINGS"
+          title={mode === 'selected' ? 'Selected Questions Test' : topic?.name || subject?.name || 'Start Test'}
+          copy={`${availableCount} question${availableCount === 1 ? '' : 's'} available for this test.`}
+        />
+
+        <div className="test-settings-card">
+          <label className="setting-label">Number of Questions</label>
+          <select
+            value={numberOfQuestions}
+            onChange={(e) => setNumberOfQuestions(Number(e.target.value))}
+          >
+            {choices.map((number) => (
+              <option key={number} value={number}>{number}</option>
+            ))}
+          </select>
+
+          <div className="setting-group">
+            <div className="setting-label">Shuffle Questions?</div>
+            <label className="radio-option">
+              <input
+                type="radio"
+                name="shuffle"
+                checked={shuffle}
+                onChange={() => setShuffle(true)}
+              />
+              Yes
+            </label>
+            <label className="radio-option">
+              <input
+                type="radio"
+                name="shuffle"
+                checked={!shuffle}
+                onChange={() => setShuffle(false)}
+              />
+              No
+            </label>
+          </div>
+
+          {mode === 'selected' && (
+            <div className="selection-note">
+              Only the questions you selected in the Question Bank will be used. You can choose any number up to {availableCount}.
+            </div>
+          )}
+
+          <button className="primary-btn full" onClick={start}>
+            Start Test
+            <ArrowRight size={18} />
+          </button>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+
+/* =========================================================
+   PRACTICE
+   ========================================================= */
+
+function Practice() {
+  const { slug } = useParams()
+  const location = useLocation()
+  const navigate = useNavigate()
+
+  const config = location.state || {}
+  const topicId = config.topicId || null
+  const mode = config.mode || 'topic'
+  const selectedQuestionIds = config.selectedQuestionIds || []
+  const requestedCount = Number(config.numberOfQuestions || 0)
+  const shuffle = Boolean(config.shuffle)
+
+  const [questions, setQuestions] = useState([])
+  const [index, setIndex] = useState(0)
+  const [selected, setSelected] = useState(null)
+  const [revealed, setRevealed] = useState(false)
+  const [score, setScore] = useState(0)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function load() {
+      setLoading(true)
+
+      if (mode === 'selected' && selectedQuestionIds.length) {
+        const { data, error } = await supabase
+          .from('questions')
+          .select('id,question_text,option_a,option_b,option_c,option_d,correct_option,explanation,topic_id')
+          .in('id', selectedQuestionIds)
+          .eq('is_published', true)
+
+        if (error) {
+          console.error('Selected question error:', error)
+          setQuestions([])
+        } else {
+          const orderMap = new Map(selectedQuestionIds.map((id, i) => [String(id), i]))
+          let result = (data || []).sort((a, b) =>
+            (orderMap.get(String(a.id)) ?? 0) - (orderMap.get(String(b.id)) ?? 0)
+          )
+
+          if (shuffle) result = [...result].sort(() => Math.random() - 0.5)
+          if (requestedCount > 0) result = result.slice(0, requestedCount)
+          setQuestions(result)
+        }
+      } else {
+        let result = await loadQuestions(slug, topicId)
+        if (shuffle) result = [...result].sort(() => Math.random() - 0.5)
+        if (requestedCount > 0) result = result.slice(0, requestedCount)
+        setQuestions(result)
+      }
+
+      setLoading(false)
+    }
+
+    load()
+  }, [slug, topicId, mode, selectedQuestionIds.join(','), requestedCount, shuffle])
+
+  if (loading) return <Loading />
+
+  if (!questions.length) {
+    return (
+      <section className="practice-page">
+        <div className="result-panel">
+          <div className="eyebrow">QUESTION BANK</div>
+          <h1>No questions available</h1>
+          <p>The selected questions may have been deleted or are no longer published.</p>
+          <button className="primary-btn" onClick={() => navigate(-1)}>Back</button>
+        </div>
+      </section>
+    )
+  }
+
+  if (index >= questions.length) {
+    return (
+      <section className="practice-page">
+        <div className="result-panel">
+          <div className="result-icon"><Trophy size={34} /></div>
+          <div className="eyebrow">SESSION COMPLETE</div>
+          <h1>{score} / {questions.length}</h1>
+          <p>You answered {score} correctly.</p>
+          <button className="primary-btn" onClick={() => navigate(-1)}>
+            Back
+            <ArrowRight size={18} />
+          </button>
+        </div>
+      </section>
+    )
+  }
+
+  const q = questions[index]
+  const options = [q.option_a, q.option_b, q.option_c, q.option_d]
+  const answer = Number(q.correct_option)
+
+  const submit = () => {
+    if (selected == null) return
+    setRevealed(true)
+    if (Number(selected) === answer) {
+      setScore((current) => current + 1)
+    }
+  }
+
+  const next = () => {
+    setSelected(null)
+    setRevealed(false)
+    setIndex((current) => current + 1)
+  }
+
+  return (
+    <section className="practice-page">
+      <div className="practice-top">
+        <button className="back-link" onClick={() => navigate(-1)}>← Exit test</button>
+        <div><Clock3 size={16} /> {shuffle ? 'Shuffled' : 'Original order'}</div>
+      </div>
+
+      <div className="question-shell">
+        <div className="question-meta">
+          <span>Question {index + 1} of {questions.length}</span>
+          <span>{score} correct</span>
+        </div>
+
+        <div className="question-progress">
+          <span style={{ width: `${((index + (revealed ? 1 : 0)) / questions.length) * 100}%` }} />
+        </div>
+
+        <h1>{q.question_text}</h1>
+
+        <div className="options">
+          {options.map((option, optionIndex) => {
+            const number = optionIndex + 1
+            const className = revealed
+              ? number === answer
+                ? 'correct'
+                : number === Number(selected)
+                  ? 'wrong'
+                  : ''
+              : Number(selected) === number
+                ? 'selected'
+                : ''
+
+            return (
+              <button
+                key={number}
+                disabled={revealed}
+                onClick={() => setSelected(number)}
+                className={`option ${className}`}
+              >
+                <span>{String.fromCharCode(64 + number)}</span>
+                <b>{option}</b>
+                {revealed && number === answer && <CheckCircle2 size={20} />}
+              </button>
+            )
+          })}
+        </div>
+
+        {revealed && (
+          <div className="explanation">
+            <div className="eyebrow">EXPLANATION</div>
+            <p>{q.explanation || 'Explanation will appear here.'}</p>
+          </div>
+        )}
+
+        <div className="question-footer">
+          {!revealed ? (
+            <button className="primary-btn" onClick={submit} disabled={selected == null}>
+              Check answer
+              <ArrowRight size={18} />
+            </button>
+          ) : (
+            <button className="primary-btn" onClick={next}>
+              {index === questions.length - 1 ? 'Finish Test' : 'Next question'}
+              <ArrowRight size={18} />
+            </button>
+          )}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+
+/* =========================================================
+   SAVED MOCK TEST
+   ========================================================= */
+
+function SavedMockTest() {
+  const { testId } = useParams()
+  const navigate = useNavigate()
+  const [test, setTest] = useState(null)
+  const [questions, setQuestions] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [index, setIndex] = useState(0)
+  const [selected, setSelected] = useState(null)
+  const [revealed, setRevealed] = useState(false)
+  const [score, setScore] = useState(0)
+
+  useEffect(() => {
+    async function load() {
+      if (!supabaseConfigured || !supabase) {
+        setLoading(false)
+        return
+      }
+
+      const { data: testData, error: testError } = await supabase
+        .from('tests')
+        .select('id,title,shuffle_questions,created_at')
+        .eq('id', testId)
+        .maybeSingle()
+
+      if (testError) console.error('Mock test error:', testError)
+
+      const { data: rows, error: rowsError } = await supabase
+        .from('test_questions')
+        .select('question_order,question_id,question_snapshot')
+        .eq('test_id', testId)
+        .order('question_order', { ascending: true })
+
+      if (rowsError) console.error('Mock test questions error:', rowsError)
+
+      const loaded = (rows || [])
+        .map((row) => row.question_snapshot)
+        .filter(Boolean)
+
+      setTest(testData)
+      setQuestions(loaded)
+      setLoading(false)
+    }
+
+    load()
+  }, [testId])
+
+  if (loading) return <Loading />
+
+  if (!questions.length) {
+    return (
+      <section className="section page">
+        <div className="container">
+          <div className="result-panel">
+            <div className="eyebrow">MOCK TEST</div>
+            <h1>Test unavailable</h1>
+            <p>This mock test has no saved questions.</p>
+            <button className="primary-btn" onClick={() => navigate('/subjects')}>Back to Subjects</button>
+          </div>
+        </div>
+      </section>
+    )
+  }
+
+  if (index >= questions.length) {
+    return (
+      <section className="practice-page">
+        <div className="result-panel">
+          <div className="result-icon"><Trophy size={34} /></div>
+          <div className="eyebrow">MOCK TEST COMPLETE</div>
+          <h1>{score} / {questions.length}</h1>
+          <p>{test?.title || 'Mock Test'}</p>
+          <button className="primary-btn" onClick={() => navigate('/subjects')}>
+            Back to Subjects
+            <ArrowRight size={18} />
+          </button>
+        </div>
+      </section>
+    )
+  }
+
+  const q = questions[index]
+  const options = [q.option_a, q.option_b, q.option_c, q.option_d]
+  const answer = Number(q.correct_option)
+
+  const submit = () => {
+    if (selected == null) return
+    setRevealed(true)
+    if (Number(selected) === answer) setScore((current) => current + 1)
+  }
+
+  const next = () => {
+    setSelected(null)
+    setRevealed(false)
+    setIndex((current) => current + 1)
+  }
+
+  return (
+    <section className="practice-page">
+      <div className="practice-top">
+        <button className="back-link" onClick={() => navigate(-1)}>← Exit mock test</button>
+        <div>{test?.title || 'Mock Test'}</div>
+      </div>
+
+      <div className="question-shell">
+        <div className="question-meta">
+          <span>Question {index + 1} of {questions.length}</span>
+          <span>{score} correct</span>
+        </div>
+
+        <div className="question-progress">
+          <span style={{ width: `${((index + (revealed ? 1 : 0)) / questions.length) * 100}%` }} />
+        </div>
+
+        <h1>{q.question_text}</h1>
+
+        <div className="options">
+          {options.map((option, optionIndex) => {
+            const number = optionIndex + 1
+            const className = revealed
+              ? number === answer
+                ? 'correct'
+                : number === Number(selected)
+                  ? 'wrong'
+                  : ''
+              : Number(selected) === number
+                ? 'selected'
+                : ''
+
+            return (
+              <button
+                key={number}
+                disabled={revealed}
+                onClick={() => setSelected(number)}
+                className={`option ${className}`}
+              >
+                <span>{String.fromCharCode(64 + number)}</span>
+                <b>{option}</b>
+                {revealed && number === answer && <CheckCircle2 size={20} />}
+              </button>
+            )
+          })}
+        </div>
+
+        {revealed && (
+          <div className="explanation">
+            <div className="eyebrow">EXPLANATION</div>
+            <p>{q.explanation || 'Explanation will appear here.'}</p>
+          </div>
+        )}
+
+        <div className="question-footer">
+          {!revealed ? (
+            <button className="primary-btn" onClick={submit} disabled={selected == null}>
+              Check answer
+              <ArrowRight size={18} />
+            </button>
+          ) : (
+            <button className="primary-btn" onClick={next}>
+              {index === questions.length - 1 ? 'Finish Test' : 'Next question'}
+              <ArrowRight size={18} />
+            </button>
+          )}
+        </div>
+      </div>
+    </section>
+  )
+}
+
 
 /* =========================================================
    LOAD SUBJECT
@@ -1219,288 +1987,339 @@ async function loadTopicPage(
 function Practice() {
   const { slug } = useParams()
   const [searchParams] = useSearchParams()
+
   const topicId = searchParams.get('topicId')
   const topicSlug = searchParams.get('topic')
-  const mock = searchParams.get('mock') === '1'
-  const [allQuestions, setAllQuestions] = useState([])
-  const [questions, setQuestions] = useState([])
-  const [index, setIndex] = useState(0)
-  const [selected, setSelected] = useState(null)
-  const [answers, setAnswers] = useState({})
-  const [loading, setLoading] = useState(true)
-  const [finished, setFinished] = useState(false)
-  const [setupComplete, setSetupComplete] = useState(false)
-  const [shuffle, setShuffle] = useState(true)
-  const [questionCount, setQuestionCount] = useState('10')
-  const [optionOrders, setOptionOrders] = useState({})
-  const [timeLeft, setTimeLeft] = useState(mock ? 30 * 60 : 0)
-  
-  useEffect(() => {
-    loadQuestions(slug, topicId, topicSlug, 1000)
-      .then((items) => {
-        const loaded = items || []
-        setAllQuestions(loaded)
 
-        if (loaded.length >= 10) {
-          setQuestionCount('10')
-        } else {
-          setQuestionCount('all')
-        }
-      })
-      .finally(() => setLoading(false))
-  }, [slug, topicId, topicSlug, mock])
+
+  const [questions, setQuestions] =
+    useState([])
+
+  const [index, setIndex] =
+    useState(0)
+
+  const [selected, setSelected] =
+    useState(null)
+
+  const [revealed, setRevealed] =
+    useState(false)
+
+  const [score, setScore] =
+    useState(0)
+
+  const [loading, setLoading] =
+    useState(true)
+
 
   useEffect(() => {
-    if (!mock || loading || finished || !questions.length) return
-    if (timeLeft <= 0) {
-      setFinished(true)
-      return
-    }
-    const timer = setInterval(() => {
-      setTimeLeft((t) => Math.max(0, t - 1))
-    }, 1000)
-    return () => clearInterval(timer)
-  }, [mock, loading, finished, questions.length, timeLeft])
 
-  const formatTime = (seconds) => {
-    const m = Math.floor(seconds / 60).toString().padStart(2, '0')
-    const s = (seconds % 60).toString().padStart(2, '0')
-    return `${m}:${s}`
-  }
-
-  const startTest = () => {
-    let selectedQuestions = [...allQuestions]
-
-    if (shuffle) {
-      for (let i = selectedQuestions.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1))
-        ;[selectedQuestions[i], selectedQuestions[j]] = [
-          selectedQuestions[j],
-          selectedQuestions[i]
-        ]
-      }
-    }
-
-    if (questionCount !== 'all') {
-      selectedQuestions = selectedQuestions.slice(
-        0,
-        Number(questionCount)
+    loadQuestions(
+      slug,
+      topicId,
+      topicSlug
+    )
+      .then(setQuestions)
+      .finally(() =>
+        setLoading(false)
       )
-    }
 
-    const newOptionOrders = {}
+  }, [slug, topicId, topicSlug])
 
-    selectedQuestions.forEach((question) => {
-      const order = [1, 2, 3, 4]
 
-      for (let i = order.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1))
-        ;[order[i], order[j]] = [order[j], order[i]]
-      }
-
-      newOptionOrders[question.id] = order
-    })
-
-    setOptionOrders(newOptionOrders)
-    setQuestions(selectedQuestions)
-    setIndex(0)
-    setSelected(null)
-    setAnswers({})
-    setFinished(false)
-    setSetupComplete(true)
-    setTimeLeft(mock ? 30 * 60 : 0)
+  if (loading) {
+    return <Loading />
   }
 
-  
-  const submitMock = () => setFinished(true)
 
-  if (loading) return <Loading />
-
-  if (!allQuestions.length) {
-    return <section className="practice-page"><div className="result-panel"><div className="eyebrow">QUESTION BANK</div><h1>No questions yet</h1><p>Published questions for this subject or topic have not been added yet.</p><Link className="primary-btn" to={`/subjects/${slug}`}>Back to subject <ArrowRight size={18} /></Link></div></section>
-  }
-
-  if (!setupComplete) {
-    const countOptions = []
-
-    for (
-      let count = 10;
-      count <= Math.floor(allQuestions.length / 10) * 10;
-      count += 10
-    ) {
-      countOptions.push(count)
-    }
+  if (!questions.length) {
 
     return (
       <section className="practice-page">
-        <div className="result-panel">
-          <div className="eyebrow">TEST SETUP</div>
 
-          <h1>Set up your test</h1>
+        <div className="result-panel">
+
+          <div className="eyebrow">
+            QUESTION BANK
+          </div>
+
+          <h1>
+            No questions yet
+          </h1>
 
           <p>
-            {allQuestions.length} question
-            {allQuestions.length === 1 ? '' : 's'} available.
+            Published questions for this topic or its subtopics have not been added yet.
           </p>
 
-          <div style={{ marginTop: '2rem', textAlign: 'left' }}>
-            <h3>Number of questions</h3>
+          <Link
+            className="primary-btn"
+            to={`/subjects/${slug}`}
+          >
+            Back to subject
+            <ArrowRight size={18} />
+          </Link>
 
-            <div
-              style={{
-                display: 'flex',
-                flexWrap: 'wrap',
-                gap: '0.6rem',
-                marginTop: '0.8rem'
-              }}
-            >
-              {countOptions.map((count) => (
-                <button
-                  key={count}
-                  type="button"
-                  className={questionCount === String(count) ? 'primary-btn' : 'outline-btn'}
-                  onClick={() => setQuestionCount(String(count))}
-                >
-                  {count}
-                </button>
-              ))}
-
-              <button
-                type="button"
-                className={questionCount === 'all' ? 'primary-btn' : 'outline-btn'}
-                onClick={() => setQuestionCount('all')}
-              >
-                All ({allQuestions.length})
-              </button>
-            </div>
-          </div>
-
-          <div style={{ marginTop: '2rem', textAlign: 'left' }}>
-            <h3>Question order</h3>
-
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '0.7rem',
-                marginTop: '0.8rem'
-              }}
-            >
-              <label>
-                <input
-                  type="radio"
-                  name="shuffle"
-                  checked={shuffle}
-                  onChange={() => setShuffle(true)}
-                />{' '}
-                Shuffle questions
-              </label>
-
-              <label>
-                <input
-                  type="radio"
-                  name="shuffle"
-                  checked={!shuffle}
-                  onChange={() => setShuffle(false)}
-                />{' '}
-                Keep original order
-              </label>
-            </div>
-          </div>
-
-          <div className="question-footer" style={{ marginTop: '2rem' }}>
-            <button
-              className="primary-btn"
-              onClick={startTest}
-            >
-              Start Test <ArrowRight size={18} />
-            </button>
-
-             <button
-              className="primary-btn"
-              onClick={() => window.location.hash = `/subjects/${slug}`}
-            >
-              Back to subject <ArrowRight size={18} />
-            </button>
-          </div>
         </div>
+
       </section>
     )
   }
-      
-  if (finished || index >= questions.length) {
-    const attempted = Object.keys(answers).length
-    const correct = Object.values(answers).filter((a) => a.correct).length
-    const wrong = Object.values(answers).filter((a) => !a.correct).length
-    const score = mock ? correct - wrong * 0.25 : correct
-    return <section className="practice-page"><div className="result-panel"><div className="result-icon"><Trophy size={34} /></div><div className="eyebrow">{mock ? 'MOCK TEST COMPLETE' : 'SESSION COMPLETE'}</div><h1>{score.toFixed(2)} / {questions.length}</h1><p>Attempted: {attempted} · Correct: {correct} · Wrong: {wrong}</p>{mock && <p>Negative marking: −0.25 for each wrong answer.</p>}<div className="question-footer"><button
-  className="primary-btn"
-  onClick={() => {
-    setQuestions([])
-    setIndex(0)
-    setSelected(null)
-    setAnswers({})
-    setOptionOrders({})
-    setFinished(false)
-    setSetupComplete(false)
-    setShuffle(true)
-    setQuestionCount(allQuestions.length >= 10 ? '10' : 'all')
-  }}
->
-  Retake test <ArrowRight size={18} />
-</button>
-     <button
-  className="primary-btn"
-  onClick={() => window.location.hash = `/subjects/${slug}`}
->
-  Back to subject <ArrowRight size={18} />
-</button>
-    
-    </div></div></section>
-  }
 
-  const q = questions[index]
 
-  const optionTexts = {
-    1: q.option_a,
-    2: q.option_b,
-    3: q.option_c,
-    4: q.option_d
-  }
+  const finished =
+    index >= questions.length
 
-  const optionOrder = optionOrders[q.id] || [1, 2, 3, 4]
 
-  const answer = Number(q.correct_option)
-  const selectedAnswer = answers[q.id]?.selected ?? selected
-  const choose = (originalOptionNumber) => setSelected(originalOptionNumber)
-  const next = () => {
-    if (selected != null) {
-      setAnswers((old) => ({ ...old, [q.id]: { selected, correct: Number(selected) === answer } }))
-    }
-    setSelected(null)
-    setIndex((i) => i + 1)
-  }
-
-  return <section className="practice-page"><div className="practice-top"><Link to={`/subjects/${slug}`}>← Exit</Link><div>{mock ? `Mock Test · ${formatTime(timeLeft)}` : 'Untimed practice'}</div></div><div className="question-shell"><div className="question-meta"><span>Question {index + 1} of {questions.length}</span><span>{mock ? '−0.25 negative marking' : 'Practice mode'}</span></div><div className="question-progress"><span style={{ width: `${(index / questions.length) * 100}%` }} /></div><h1>{q.question_text}</h1><div className="options">
-  {optionOrder.map((originalOptionNumber, displayIndex) => {
-    const option = optionTexts[originalOptionNumber]
-    const displayLetter = String.fromCharCode(65 + displayIndex)
+  if (finished) {
 
     return (
-      <button
-        key={originalOptionNumber}
-        onClick={() => choose(originalOptionNumber)}
-        className={`option ${
-          Number(selectedAnswer) === originalOptionNumber ? 'selected' : ''
-        }`}
-      >
-        <span>{displayLetter}</span>
-        <b>{option}</b>
-      </button>
+      <section className="practice-page">
+
+        <div className="result-panel">
+
+          <div className="result-icon">
+            <Trophy size={34} />
+          </div>
+
+          <div className="eyebrow">
+            SESSION COMPLETE
+          </div>
+
+          <h1>
+            {score} / {questions.length}
+          </h1>
+
+          <p>
+            Nice work.
+          </p>
+
+          <Link
+            className="primary-btn"
+            to={`/subjects/${slug}`}
+          >
+            Back to subject
+            <ArrowRight size={18} />
+          </Link>
+
+        </div>
+
+      </section>
     )
-  })}
-</div><div className="question-footer">{index < questions.length - 1 ? <button className="primary-btn" onClick={next} disabled={selected == null}>Next question <ArrowRight size={18} /></button> : <button className="primary-btn" onClick={() => { if (selected != null) setAnswers((old) => ({ ...old, [q.id]: { selected, correct: Number(selected) === answer } })); submitMock() }}>Submit test <CheckCircle2 size={18} /></button>}</div></div></section>
+  }
+
+
+  const q =
+    questions[index]
+
+
+  const options = [
+    q.option_a,
+    q.option_b,
+    q.option_c,
+    q.option_d
+  ]
+
+
+  const answer =
+    Number(q.correct_option)
+
+
+  const submit = () => {
+
+    if (selected == null) {
+      return
+    }
+
+    setRevealed(true)
+
+    if (
+      Number(selected) ===
+      answer
+    ) {
+      setScore(
+        (currentScore) =>
+          currentScore + 1
+      )
+    }
+  }
+
+
+  const next = () => {
+
+    setSelected(null)
+    setRevealed(false)
+
+    setIndex(
+      (currentIndex) =>
+        currentIndex + 1
+    )
+  }
+
+
+  return (
+    <section className="practice-page">
+
+      <div className="practice-top">
+
+        <Link
+          to={`/subjects/${slug}`}
+        >
+          ← Exit practice
+        </Link>
+
+        <div>
+          <Clock3 size={16} />
+          Untimed practice
+        </div>
+
+      </div>
+
+
+      <div className="question-shell">
+
+        <div className="question-meta">
+
+          <span>
+            Question {index + 1} of{' '}
+            {questions.length}
+          </span>
+
+          <span>
+            {score} correct
+          </span>
+
+        </div>
+
+
+        <div className="question-progress">
+
+          <span
+            style={{
+              width: `${
+                (index /
+                  questions.length) *
+                100
+              }%`
+            }}
+          />
+
+        </div>
+
+
+        <h1>
+          {q.question_text}
+        </h1>
+
+
+        <div className="options">
+
+          {options.map(
+            (option, optionIndex) => {
+
+              const number =
+                optionIndex + 1
+
+
+              const className =
+                revealed
+                  ? number === answer
+                    ? 'correct'
+                    : number ===
+                        Number(selected)
+                      ? 'wrong'
+                      : ''
+                  : Number(selected) ===
+                      number
+                    ? 'selected'
+                    : ''
+
+
+              return (
+                <button
+                  key={number}
+                  disabled={revealed}
+                  onClick={() =>
+                    setSelected(number)
+                  }
+                  className={`option ${className}`}
+                >
+
+                  <span>
+                    {String.fromCharCode(
+                      64 + number
+                    )}
+                  </span>
+
+                  <b>
+                    {option}
+                  </b>
+
+                  {revealed &&
+                    number ===
+                      answer && (
+                      <CheckCircle2
+                        size={20}
+                      />
+                    )}
+
+                </button>
+              )
+            }
+          )}
+
+        </div>
+
+
+        {revealed && (
+          <div className="explanation">
+
+            <div className="eyebrow">
+              EXPLANATION
+            </div>
+
+            <p>
+              {q.explanation ||
+                'Explanation will appear here.'}
+            </p>
+
+          </div>
+        )}
+
+
+        <div className="question-footer">
+
+          {!revealed ? (
+
+            <button
+              className="primary-btn"
+              onClick={submit}
+              disabled={
+                selected == null
+              }
+            >
+              Check answer
+              <ArrowRight size={18} />
+            </button>
+
+          ) : (
+
+            <button
+              className="primary-btn"
+              onClick={next}
+            >
+              Next question
+              <ArrowRight size={18} />
+            </button>
+
+          )}
+
+        </div>
+
+      </div>
+
+    </section>
+  )
 }
+
 
 /* =========================================================
    LOAD QUESTIONS
@@ -1531,7 +2350,7 @@ function getTopicIdsForPractice(topics, rootTopicId) {
   return Array.from(wanted)
 }
 
-async function loadQuestions(slug, topicId = null, topicSlug = null, questionLimit = 1000) {
+async function loadQuestions(slug, topicId = null, topicSlug = null) {
   if (!supabaseConfigured || !supabase) {
     return demoQuestions
   }
@@ -1581,15 +2400,7 @@ async function loadQuestions(slug, topicId = null, topicSlug = null, questionLim
     selectedTopicId = topic.id
   }
 
-  let query = supabase
-    .from('questions')
-    .select(
-      'id,question_text,option_a,option_b,option_c,option_d,correct_option,explanation,topic_id'
-    )
-    .eq('is_published', true)
-    .eq('subject', subject.name)
-    .order('id', { ascending: true })
-    .limit(questionLimit)
+  let topicIds = null
 
   if (selectedTopicId) {
     const {
@@ -1606,25 +2417,56 @@ async function loadQuestions(slug, topicId = null, topicSlug = null, questionLim
       return []
     }
 
-    const topicIds = getTopicIdsForPractice(
+    topicIds = getTopicIdsForPractice(
       topics || [],
       selectedTopicId
     )
-
-    query = query.in('topic_id', topicIds)
   }
 
-  const {
-    data,
-    error
-  } = await query
+  /*
+    Supabase/PostgREST commonly caps a single response at 1000 rows.
+    Fetch in pages so the portal never silently stops at 10 (or 1000)
+    questions when a bank grows.
+  */
+  const pageSize = 1000
+  const allQuestions = []
+  let from = 0
 
-  if (error) {
-    console.error('Question error:', error)
-    return []
+  while (true) {
+    let query = supabase
+      .from('questions')
+      .select(
+        'id,question_text,option_a,option_b,option_c,option_d,correct_option,explanation,topic_id'
+      )
+      .eq('is_published', true)
+      .eq('subject', subject.name)
+      .order('id', { ascending: true })
+      .range(from, from + pageSize - 1)
+
+    if (topicIds?.length) {
+      query = query.in('topic_id', topicIds)
+    }
+
+    const {
+      data,
+      error
+    } = await query
+
+    if (error) {
+      console.error('Question error:', error)
+      return []
+    }
+
+    allQuestions.push(...(data || []))
+
+    if (!data || data.length < pageSize) {
+      break
+    }
+
+    from += pageSize
   }
-console.log('QUESTIONS LOADED:', data?.length)
-  return data || []
+
+  return allQuestions
 }
 
 
@@ -1728,235 +2570,6 @@ function Footer() {
 }
 
 
-
-/* =========================================================
-   EXAM SELECTION PAGE
-   ========================================================= */
-
-function ExamSelection() {
-  const exams = [
-    {
-      id: 'upsc',
-      name: 'UPSC Civil Services',
-      description: 'General Studies, CSAT, History, Polity, Economy and more.'
-    },
-    {
-      id: 'clat',
-      name: 'CLAT',
-      description: 'English, Legal Reasoning, Current Affairs, GK and Logical Reasoning.'
-    },
-    {
-      id: 'ailet',
-      name: 'AILET',
-      description: 'English, Current Affairs, Legal Aptitude and Logical Reasoning.'
-    },
-    {
-      id: 'neet-ug',
-      name: 'NEET UG',
-      description: 'Physics, Chemistry, Botany and Zoology.'
-    },
-    {
-      id: 'neet-pg',
-      name: 'NEET PG',
-      description: 'Medical subjects and postgraduate entrance preparation.'
-    },
-    {
-      id: 'ca-foundation',
-      name: 'CA Foundation',
-      description: 'Accounting, Business Laws, Economics and Quantitative Aptitude.'
-    },
-    {
-      id: 'ca-intermediate',
-      name: 'CA Intermediate',
-      description: 'Advanced Accounting, Law, Taxation, Costing and Auditing.'
-    },
-    {
-      id: 'ca-final',
-      name: 'CA Final',
-      description: 'Advanced professional-level CA preparation.'
-    }
-  ]
-
-  return (
-    <section className="section page">
-      <div className="container">
-        <SectionHeading
-          eyebrow="CHOOSE YOUR EXAM"
-          title="Select an exam"
-          copy="Choose an exam to see only the subjects connected to that examination."
-        />
-
-        <div className="subject-grid">
-          {exams.map((exam, index) => (
-            <Link
-              key={exam.id}
-              to={`/exams/${exam.id}`}
-              className="subject-card"
-            >
-              <div className="subject-number">
-                {String(index + 1).padStart(2, '0')}
-              </div>
-
-              <div>
-                <h3>{exam.name}</h3>
-                <p>{exam.description}</p>
-              </div>
-
-              <ArrowRight size={18} />
-            </Link>
-          ))}
-        </div>
-      </div>
-    </section>
-  )
-}
-
-
-/* =========================================================
-   EXAM-WISE SUBJECTS PAGE
-   ========================================================= */
-
-function ExamSubjects() {
-  const { examSlug } = useParams()
-
-  const [exam, setExam] = useState(null)
-  const [subjects, setSubjects] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [errorMessage, setErrorMessage] = useState('')
-
-  useEffect(() => {
-    async function fetchExamSubjects() {
-      setLoading(true)
-      setErrorMessage('')
-
-      if (!supabaseConfigured || !supabase) {
-        setErrorMessage('Supabase is not connected.')
-        setLoading(false)
-        return
-      }
-
-      const {
-        data,
-        error
-      } = await supabase
-        .from('exams')
-        .select(`
-          id,
-          name,
-          slug,
-          description,
-          exam_subjects (
-            id,
-            display_order,
-            subject_id,
-            subjects (
-              id,
-              name,
-              slug,
-              description
-            )
-          )
-        `)
-        .eq('slug', examSlug)
-        .eq('is_active', true)
-          .single()
-
-      if (error) {
-        console.error('Exam subjects error:', error)
-        setErrorMessage('Unable to load this exam.')
-        setLoading(false)
-        return
-      }
-
-      setExam(data)
-
-      const linkedSubjects = (data.exam_subjects || [])
-        .filter((item) => item.subjects)
-        .sort(
-          (a, b) =>
-            (a.display_order || 0) -
-            (b.display_order || 0)
-        )
-        .map((item) => item.subjects)
-        .filter(
-          (subject, index, all) =>
-            all.findIndex((item) => item.id === subject.id) === index
-        )
-
-      setSubjects(linkedSubjects)
-      setLoading(false)
-    }
-
-    fetchExamSubjects()
-  }, [examSlug])
-
-  if (loading) {
-    return <Loading />
-  }
-
-  if (errorMessage) {
-    return (
-      <section className="section page">
-        <div className="container">
-          <div className="demo-note">
-            {errorMessage}
-          </div>
-        </div>
-      </section>
-    )
-  }
-
-  return (
-    <section className="section page">
-      <div className="container">
-        <Link
-          to="/exams"
-          className="secondary-link"
-        >
-          ← Change Exam
-        </Link>
-
-        <SectionHeading
-          eyebrow="EXAM SUBJECTS"
-          title={exam?.name || 'Subjects'}
-          copy={
-            exam?.description ||
-            'Choose a subject to explore its topics.'
-          }
-        />
-
-        {subjects.length === 0 ? (
-          <div className="demo-note">
-            No subjects have been linked to this exam yet.
-          </div>
-        ) : (
-          <div className="subject-grid">
-            {subjects.map((subject, index) => (
-              <Link
-                key={subject.id}
-                to={`/subjects/${subject.slug}`}
-                className="subject-card"
-              >
-                <div className="subject-number">
-                  {String(index + 1).padStart(2, '0')}
-                </div>
-
-                <div>
-                  <h3>{subject.name}</h3>
-                  <p>
-                    Open subject topics and question bank
-                  </p>
-                </div>
-
-                <ArrowRight size={18} />
-              </Link>
-            ))}
-          </div>
-        )}
-      </div>
-    </section>
-  )
-}
 /* =========================================================
    MOUNT APP
    ========================================================= */
