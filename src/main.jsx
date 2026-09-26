@@ -939,8 +939,8 @@ function TopicDetail() {
         <div className="callout" style={{ marginBottom: '1.25rem' }}>
           <div>
             <div className="eyebrow">QUESTION BANK</div>
-            <h2>{directQuestionCount} direct question{directQuestionCount === 1 ? '' : 's'}</h2>
-            <p>View and manage every question assigned directly to this topic.</p>
+            <h2>{directQuestionCount} question{directQuestionCount === 1 ? '' : 's'} available</h2>
+            <p>Includes questions assigned to this topic and its subtopics.</p>
           </div>
           <div className="topic-actions">
             <Link
@@ -1013,6 +1013,91 @@ function TopicDetail() {
 
 
 /* =========================================================
+   TOPIC / QUESTION HELPERS
+   ========================================================= */
+
+function getDescendantTopicIds(topics, rootId) {
+  const root = String(rootId)
+  const ids = new Set([root])
+  let changed = true
+
+  while (changed) {
+    changed = false
+    for (const topic of topics || []) {
+      if (topic.parent_id != null && ids.has(String(topic.parent_id))) {
+        const id = String(topic.id)
+        if (!ids.has(id)) {
+          ids.add(id)
+          changed = true
+        }
+      }
+    }
+  }
+
+  return Array.from(ids)
+}
+
+function getTopicIdsForPractice(topics, topicId) {
+  if (!topicId) return []
+  return getDescendantTopicIds(topics, topicId)
+}
+
+async function loadQuestions(slug, topicId) {
+  if (!supabaseConfigured || !supabase) return []
+
+  let query = supabase
+    .from('questions')
+    .select('id,question_text,option_a,option_b,option_c,option_d,correct_option,explanation,topic_id')
+    .eq('is_published', true)
+    .order('id', { ascending: true })
+
+  if (topicId) {
+    const { data: subjectData } = await supabase
+      .from('subjects')
+      .select('id')
+      .eq('slug', slug)
+      .maybeSingle()
+
+    if (!subjectData) return []
+
+    const { data: topics, error: topicError } = await supabase
+      .from('topics')
+      .select('id,parent_id')
+      .eq('subject_id', subjectData.id)
+      .eq('is_active', true)
+
+    if (topicError) {
+      console.error('Practice topics error:', topicError)
+      return []
+    }
+
+    const topicIds = getDescendantTopicIds(topics || [], topicId)
+    if (!topicIds.length) return []
+
+    query = query.in('topic_id', topicIds)
+  } else {
+    const { data: subjectData } = await supabase
+      .from('subjects')
+      .select('id,name')
+      .eq('slug', slug)
+      .maybeSingle()
+
+    if (!subjectData) return []
+    query = query.eq('subject', subjectData.name)
+  }
+
+  const { data, error } = await query
+
+  if (error) {
+    console.error('Questions error:', error)
+    return []
+  }
+
+  return data || []
+}
+
+
+/* =========================================================
    QUESTION BANK
    ========================================================= */
 
@@ -1032,7 +1117,7 @@ function QuestionBank() {
   const loadBank = async () => {
     setLoading(true)
 
-    if (!supabaseConfigured || !supabase) {
+    if (!supabaseConfigured || !supabase || !topicId) {
       setQuestions([])
       setLoading(false)
       return
@@ -1067,10 +1152,24 @@ function QuestionBank() {
 
     setTopic(topicData)
 
+    const { data: allTopics, error: allTopicsError } = await supabase
+      .from('topics')
+      .select('id,parent_id')
+      .eq('subject_id', subjectData.id)
+      .eq('is_active', true)
+
+    if (allTopicsError) {
+      console.error('Question bank topics error:', allTopicsError)
+      setLoading(false)
+      return
+    }
+
+    const topicIds = getDescendantTopicIds(allTopics || [], topicId)
+
     const { data, error } = await supabase
       .from('questions')
       .select('id,subject,question_text,option_a,option_b,option_c,option_d,correct_option,explanation,is_published,topic_id')
-      .eq('topic_id', topicId)
+      .in('topic_id', topicIds)
       .order('id', { ascending: true })
 
     if (error) {
@@ -1085,7 +1184,7 @@ function QuestionBank() {
   }
 
   useEffect(() => {
-    if (topicId) loadBank()
+    loadBank()
   }, [slug, topicId])
 
   const allSelected = questions.length > 0 && selectedIds.length === questions.length
@@ -1098,10 +1197,7 @@ function QuestionBank() {
     )
   }
 
-  const selectAll = () => {
-    setSelectedIds(questions.map((q) => q.id))
-  }
-
+  const selectAll = () => setSelectedIds(questions.map((q) => q.id))
   const deselectAll = () => setSelectedIds([])
 
   const deleteIds = async (ids) => {
@@ -1203,39 +1299,27 @@ function QuestionBank() {
           </div>
           <div>
             <strong>{selectedIds.length}</strong>
-            <span>Selected</span>
+            <span>Selected Questions</span>
           </div>
         </div>
 
         <div className="question-bank-toolbar">
-          <button className="outline-btn" onClick={allSelected ? deselectAll : selectAll}>
+          <button className="outline-btn" onClick={allSelected ? deselectAll : selectAll} disabled={!questions.length || busy}>
             <CheckSquare size={17} />
             {allSelected ? 'Deselect All' : 'Select All'}
           </button>
 
-          <button
-            className="outline-btn"
-            onClick={attemptSelected}
-            disabled={!selectedIds.length || busy}
-          >
-            Attempt Selected Questions
+          <button className="outline-btn" onClick={attemptSelected} disabled={!selectedIds.length || busy}>
             <ArrowRight size={17} />
+            Attempt Selected Questions
           </button>
 
-          <button
-            className="outline-btn"
-            onClick={createMockTest}
-            disabled={!selectedIds.length || busy}
-          >
-            Create Mock Test
+          <button className="outline-btn" onClick={createMockTest} disabled={!selectedIds.length || busy}>
             <ListChecks size={17} />
+            Create Mock Test
           </button>
 
-          <button
-            className="danger-btn"
-            onClick={() => deleteIds(selectedIds)}
-            disabled={!selectedIds.length || busy}
-          >
+          <button className="danger-btn" onClick={() => deleteIds(selectedIds)} disabled={!selectedIds.length || busy}>
             <Trash2 size={17} />
             Delete Selected
           </button>
@@ -1243,7 +1327,7 @@ function QuestionBank() {
 
         {!questions.length ? (
           <div className="demo-note">
-            No questions have been added to this topic yet.
+            No questions have been added to this topic or any of its subtopics yet.
           </div>
         ) : (
           <div className="question-bank-list">
@@ -1264,6 +1348,7 @@ function QuestionBank() {
                   <div className="question-bank-meta">
                     <span>ID: {question.id}</span>
                     <span>{question.is_published ? 'Published' : 'Unpublished'}</span>
+                    {question.topic_id !== Number(topicId) && <span>From subtopic</span>}
                   </div>
                 </div>
 
@@ -1283,7 +1368,6 @@ function QuestionBank() {
     </section>
   )
 }
-
 
 /* =========================================================
    TEST SETUP
@@ -1499,9 +1583,8 @@ function Practice() {
 
   const [questions, setQuestions] = useState([])
   const [index, setIndex] = useState(0)
-  const [selected, setSelected] = useState(null)
-  const [revealed, setRevealed] = useState(false)
-  const [score, setScore] = useState(0)
+  const [answers, setAnswers] = useState({})
+  const [revealedMap, setRevealedMap] = useState({})
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -1509,6 +1592,12 @@ function Practice() {
       setLoading(true)
 
       if (mode === 'selected' && selectedQuestionIds.length) {
+        if (!supabaseConfigured || !supabase) {
+          setQuestions([])
+          setLoading(false)
+          return
+        }
+
         const { data, error } = await supabase
           .from('questions')
           .select('id,question_text,option_a,option_b,option_c,option_d,correct_option,explanation,topic_id')
@@ -1535,6 +1624,9 @@ function Practice() {
         setQuestions(result)
       }
 
+      setAnswers({})
+      setRevealedMap({})
+      setIndex(0)
       setLoading(false)
     }
 
@@ -1556,7 +1648,12 @@ function Practice() {
     )
   }
 
+  const getScore = () => questions.reduce((total, question) => {
+    return total + (Number(answers[String(question.id)]) === Number(question.correct_option) ? 1 : 0)
+  }, 0)
+
   if (index >= questions.length) {
+    const score = getScore()
     return (
       <section className="practice-page">
         <div className="result-panel">
@@ -1576,18 +1673,31 @@ function Practice() {
   const q = questions[index]
   const options = [q.option_a, q.option_b, q.option_c, q.option_d]
   const answer = Number(q.correct_option)
+  const questionKey = String(q.id)
+  const selected = answers[questionKey] ?? null
+  const revealed = Boolean(revealedMap[questionKey])
+  const answeredCount = Object.keys(answers).filter((id) => questions.some((question) => String(question.id) === id)).length
+
+  const choose = (number) => {
+    if (revealed) return
+    setAnswers((current) => ({ ...current, [questionKey]: number }))
+  }
 
   const submit = () => {
     if (selected == null) return
-    setRevealed(true)
-    if (Number(selected) === answer) {
-      setScore((current) => current + 1)
-    }
+    setRevealedMap((current) => ({ ...current, [questionKey]: true }))
   }
 
   const next = () => {
-    setSelected(null)
-    setRevealed(false)
+    setIndex((current) => current + 1)
+  }
+
+  const back = () => {
+    if (index === 0) return
+    setIndex((current) => current - 1)
+  }
+
+  const skip = () => {
     setIndex((current) => current + 1)
   }
 
@@ -1601,11 +1711,11 @@ function Practice() {
       <div className="question-shell">
         <div className="question-meta">
           <span>Question {index + 1} of {questions.length}</span>
-          <span>{score} correct</span>
+          <span>{answeredCount} answered</span>
         </div>
 
         <div className="question-progress">
-          <span style={{ width: `${((index + (revealed ? 1 : 0)) / questions.length) * 100}%` }} />
+          <span style={{ width: `${((index + 1) / questions.length) * 100}%` }} />
         </div>
 
         <h1>{q.question_text}</h1>
@@ -1627,7 +1737,7 @@ function Practice() {
               <button
                 key={number}
                 disabled={revealed}
-                onClick={() => setSelected(number)}
+                onClick={() => choose(number)}
                 className={`option ${className}`}
               >
                 <span>{String.fromCharCode(64 + number)}</span>
@@ -1641,19 +1751,30 @@ function Practice() {
         {revealed && (
           <div className="explanation">
             <div className="eyebrow">EXPLANATION</div>
-            <p>{q.explanation || 'Explanation will appear here.'}</p>
+            <p>{q.explanation?.trim() || 'No explanation has been added for this question yet.'}</p>
           </div>
         )}
 
-        <div className="question-footer">
+        <div className="question-footer question-navigation">
+          <button className="outline-btn" onClick={back} disabled={index === 0}>
+            <ChevronLeft size={18} />
+            Back
+          </button>
+
           {!revealed ? (
-            <button className="primary-btn" onClick={submit} disabled={selected == null}>
-              Check answer
-              <ArrowRight size={18} />
-            </button>
+            <>
+              <button className="outline-btn" onClick={skip}>
+                Skip
+                <ChevronRight size={18} />
+              </button>
+              <button className="primary-btn" onClick={submit} disabled={selected == null}>
+                Check Answer
+                <ArrowRight size={18} />
+              </button>
+            </>
           ) : (
             <button className="primary-btn" onClick={next}>
-              {index === questions.length - 1 ? 'Finish Test' : 'Next question'}
+              {index === questions.length - 1 ? 'Finish Test' : 'Next Question'}
               <ArrowRight size={18} />
             </button>
           )}
@@ -1662,7 +1783,6 @@ function Practice() {
     </section>
   )
 }
-
 
 /* =========================================================
    SAVED MOCK TEST
@@ -1675,9 +1795,8 @@ function SavedMockTest() {
   const [questions, setQuestions] = useState([])
   const [loading, setLoading] = useState(true)
   const [index, setIndex] = useState(0)
-  const [selected, setSelected] = useState(null)
-  const [revealed, setRevealed] = useState(false)
-  const [score, setScore] = useState(0)
+  const [answers, setAnswers] = useState({})
+  const [revealedMap, setRevealedMap] = useState({})
 
   useEffect(() => {
     async function load() {
@@ -1731,7 +1850,12 @@ function SavedMockTest() {
     )
   }
 
+  const getScore = () => questions.reduce((total, question) => {
+    return total + (Number(answers[String(question.id)]) === Number(question.correct_option) ? 1 : 0)
+  }, 0)
+
   if (index >= questions.length) {
+    const score = getScore()
     return (
       <section className="practice-page">
         <div className="result-panel">
@@ -1751,17 +1875,19 @@ function SavedMockTest() {
   const q = questions[index]
   const options = [q.option_a, q.option_b, q.option_c, q.option_d]
   const answer = Number(q.correct_option)
+  const questionKey = String(q.id)
+  const selected = answers[questionKey] ?? null
+  const revealed = Boolean(revealedMap[questionKey])
+  const answeredCount = Object.keys(answers).length
+
+  const choose = (number) => {
+    if (revealed) return
+    setAnswers((current) => ({ ...current, [questionKey]: number }))
+  }
 
   const submit = () => {
     if (selected == null) return
-    setRevealed(true)
-    if (Number(selected) === answer) setScore((current) => current + 1)
-  }
-
-  const next = () => {
-    setSelected(null)
-    setRevealed(false)
-    setIndex((current) => current + 1)
+    setRevealedMap((current) => ({ ...current, [questionKey]: true }))
   }
 
   return (
@@ -1774,11 +1900,11 @@ function SavedMockTest() {
       <div className="question-shell">
         <div className="question-meta">
           <span>Question {index + 1} of {questions.length}</span>
-          <span>{score} correct</span>
+          <span>{answeredCount} answered</span>
         </div>
 
         <div className="question-progress">
-          <span style={{ width: `${((index + (revealed ? 1 : 0)) / questions.length) * 100}%` }} />
+          <span style={{ width: `${((index + 1) / questions.length) * 100}%` }} />
         </div>
 
         <h1>{q.question_text}</h1>
@@ -1800,7 +1926,7 @@ function SavedMockTest() {
               <button
                 key={number}
                 disabled={revealed}
-                onClick={() => setSelected(number)}
+                onClick={() => choose(number)}
                 className={`option ${className}`}
               >
                 <span>{String.fromCharCode(64 + number)}</span>
@@ -1814,19 +1940,30 @@ function SavedMockTest() {
         {revealed && (
           <div className="explanation">
             <div className="eyebrow">EXPLANATION</div>
-            <p>{q.explanation || 'Explanation will appear here.'}</p>
+            <p>{q.explanation?.trim() || 'No explanation has been added for this question yet.'}</p>
           </div>
         )}
 
-        <div className="question-footer">
+        <div className="question-footer question-navigation">
+          <button className="outline-btn" onClick={() => setIndex((current) => Math.max(0, current - 1))} disabled={index === 0}>
+            <ChevronLeft size={18} />
+            Back
+          </button>
+
           {!revealed ? (
-            <button className="primary-btn" onClick={submit} disabled={selected == null}>
-              Check answer
-              <ArrowRight size={18} />
-            </button>
+            <>
+              <button className="outline-btn" onClick={() => setIndex((current) => current + 1)}>
+                Skip
+                <ChevronRight size={18} />
+              </button>
+              <button className="primary-btn" onClick={submit} disabled={selected == null}>
+                Check Answer
+                <ArrowRight size={18} />
+              </button>
+            </>
           ) : (
-            <button className="primary-btn" onClick={next}>
-              {index === questions.length - 1 ? 'Finish Test' : 'Next question'}
+            <button className="primary-btn" onClick={() => setIndex((current) => current + 1)}>
+              {index === questions.length - 1 ? 'Finish Test' : 'Next Question'}
               <ArrowRight size={18} />
             </button>
           )}
@@ -1835,7 +1972,6 @@ function SavedMockTest() {
     </section>
   )
 }
-
 
 /* =========================================================
    LOAD SUBJECT
@@ -1894,27 +2030,37 @@ async function loadSubject(slug) {
       }
 
 
+      const topicList = topics || []
+
       const { data: questionRows, error: questionError } = await supabase
         .from('questions')
         .select('topic_id')
         .eq('is_published', true)
-        .eq('subject', subject.name)
 
       if (questionError) {
         console.error('Question count error:', questionError)
       }
 
-      const questionCounts = {}
+      const directCounts = {}
       for (const row of questionRows || []) {
-        const key = String(row.topic_id)
         if (row.topic_id != null) {
-          questionCounts[key] = (questionCounts[key] || 0) + 1
+          const key = String(row.topic_id)
+          directCounts[key] = (directCounts[key] || 0) + 1
         }
+      }
+
+      const questionCounts = {}
+      for (const topic of topicList) {
+        const descendantIds = getDescendantTopicIds(topicList, topic.id)
+        questionCounts[String(topic.id)] = descendantIds.reduce(
+          (total, id) => total + Number(directCounts[String(id)] || 0),
+          0
+        )
       }
 
       return {
         subject,
-        topics: topics || [],
+        topics: topicList,
         questionCounts
       }
     }
