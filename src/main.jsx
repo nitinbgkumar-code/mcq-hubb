@@ -2032,21 +2032,38 @@ async function loadSubject(slug) {
 
       const topicList = topics || []
 
-      const { data: questionRows, error: questionError } = await supabase
-        .from('questions')
-        .select('topic_id')
-        .eq('is_published', true)
-
-      if (questionError) {
-        console.error('Question count error:', questionError)
-      }
-
+      // Supabase/PostgREST normally limits a plain SELECT to the API
+      // page size (commonly 1000 rows). This subject can contain more
+      // than 1000 questions, so fetching all question topic_ids in one
+      // request can silently omit later topics such as Sunga/Kanva.
+      // Fetch the topic_id values in pages so the displayed counts are
+      // based on the complete question bank.
       const directCounts = {}
-      for (const row of questionRows || []) {
-        if (row.topic_id != null) {
-          const key = String(row.topic_id)
-          directCounts[key] = (directCounts[key] || 0) + 1
+      const pageSize = 1000
+      let from = 0
+      let hasMore = true
+
+      while (hasMore) {
+        const { data: questionRows, error: questionError } = await supabase
+          .from('questions')
+          .select('topic_id')
+          .eq('is_published', true)
+          .range(from, from + pageSize - 1)
+
+        if (questionError) {
+          console.error('Question count error:', questionError)
+          break
         }
+
+        for (const row of questionRows || []) {
+          if (row.topic_id != null) {
+            const key = String(row.topic_id)
+            directCounts[key] = (directCounts[key] || 0) + 1
+          }
+        }
+
+        hasMore = (questionRows || []).length === pageSize
+        from += pageSize
       }
 
       const questionCounts = {}
