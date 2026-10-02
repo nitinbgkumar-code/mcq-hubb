@@ -119,7 +119,8 @@ button:disabled {
   border: 1px solid #dbe2ea;
   border-radius: 10px;
 
-  background: white;
+  background: #ffffff;
+   color: #111827;  /* Added: dark, visible text */
 
   font-weight: 700;
   font-size: 14px;
